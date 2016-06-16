@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>recovery_supervisor</name>
+  <version>0.0.0</version>
+  <description>A package for supervising navigation</description>
+
+  <maintainer email="mitranopeter@gmail.com">Peter Mitrano</maintainer>
+
+  <license>WTFPL</license>
+
+  <author >Peter Mitrano</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>roscpp</depend>
+
+  <export>
+
+  </export>
+</package>
