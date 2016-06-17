@@ -17,10 +17,10 @@ RecoverySupervisor::RecoverySupervisor()
   private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
 
   // controls how long between checks for lack of progress (seconds)
-  private_nh.param<double>("stagnation_check_period", stagnation_check_period_, 5);
+  private_nh.param<double>("stagnation_check_period", stagnation_check_period_, 25);
 
   // controls how far the robot must move in stagnation_check_period (meters)
-  private_nh.param<double>("minimum_displacement", minimum_displacement_, 0.5);
+  private_nh.param<double>("minimum_displacement", minimum_displacement_, 3);
 
   cmd_vel_sub_ = private_nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
 
