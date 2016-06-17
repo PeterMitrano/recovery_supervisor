@@ -6,6 +6,7 @@
 
         <remap from="/odom" to="/vector/odometry/local_filtered" />
         <remap from="move_base/status" to="move_base_navi/status" />
+        <remap from="move_base/cancel" to="move_base_navi/cancel" />
         <remap from="cmd_vel" to="/vector/teleop/cmd_vel" />
 
     </node>

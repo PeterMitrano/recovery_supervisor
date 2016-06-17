@@ -38,15 +38,15 @@ private:
   bool demonstrating_;
   bool has_goal_;
   geometry_msgs::PoseStamped latest_goal_;
+  ros::Publisher cancel_pub_;
   ros::Subscriber cmd_vel_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber joy_sub_;
   ros::Subscriber status_sub_;
-  ros::Subscriber goal_sub_;
   ros::Subscriber local_costmap_sub_;
   ros::Subscriber global_costmap_sub_;
   ros::Time stagnation_start_time_;
-  std::string latest_goal_id_;
+  std::string current_goal_id_;
   std::vector<geometry_msgs::Twist> velocities_;
   tf::Pose start_stagnation_pose_;
 

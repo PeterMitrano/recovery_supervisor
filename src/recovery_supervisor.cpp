@@ -10,7 +10,6 @@ RecoverySupervisor::RecoverySupervisor()
   , ending_demonstration_(false)
   , demonstrating_(false)
   , has_goal_(false)
-  , latest_goal_id_("uninitialized")
 {
   // fetch parameters
   ros::NodeHandle private_nh("~");
@@ -18,27 +17,26 @@ RecoverySupervisor::RecoverySupervisor()
   private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
 
   // controls how long between checks for lack of progress (seconds)
-  private_nh.param<double>("stagnation_check_period", stagnation_check_period_, 10);
+  private_nh.param<double>("stagnation_check_period", stagnation_check_period_, 5);
 
   // controls how far the robot must move in stagnation_check_period (meters)
-  private_nh.param<double>("minimum_displacement", minimum_displacement_, 2);
+  private_nh.param<double>("minimum_displacement", minimum_displacement_, 0.5);
 
   cmd_vel_sub_ = private_nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
 
-  odom_sub_ = nh.subscribe("odom", 10, &RecoverySupervisor::odometryCallback, this);
+  odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
-  status_sub_ = nh.subscribe("move_base/status", 10, &RecoverySupervisor::moveBaseStatusCallback, this);
-  goal_sub_ = nh.subscribe("move_base_simple/goal", 10, &RecoverySupervisor::moveBaseGoalCallback, this);
+  status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
   local_costmap_sub_ =
       nh.subscribe("move_base/local_costmap/costmap_updates", 10, &RecoverySupervisor::localCostmapCallback, this);
   global_costmap_sub_ =
       nh.subscribe("move_base/global_costmap/costmap_updates", 10, &RecoverySupervisor::globalCostmapCallback, this);
 
+  cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
+
   ROS_INFO("finish_demonstration_button %d", finish_demonstration_button_);
   ROS_INFO("stagnation_check_period %f", stagnation_check_period_);
   ROS_INFO("minimum_displacement %f", minimum_displacement_);
-
-  stagnation_start_time_ = ros::Time::now();
 
   while (ros::ok())
   {
@@ -48,6 +46,10 @@ RecoverySupervisor::RecoverySupervisor()
       starting_demonstration_ = false;
       has_goal_ = false;
       demonstrating_ = true;
+
+      actionlib_msgs::GoalID cancel_msg;
+      cancel_msg.stamp = ros::Time(0);
+      cancel_pub_.publish(cancel_msg);
     }
 
     if (ending_demonstration_)
@@ -78,22 +80,22 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
   if (!demonstrating_ && has_goal_)
   {
     ros::Time next_check_time = stagnation_start_time_ + ros::Duration(stagnation_check_period_);
+    ros::Time current_time = ros::Time::now();
 
     // check how far we've moved periodically
-    if (msg.header.stamp > next_check_time)
+    if (current_time > next_check_time)
     {
       tf::Pose current_pose;
       tf::poseMsgToTF(msg.pose.pose, current_pose);
 
       double displacement = (current_pose.getOrigin() - start_stagnation_pose_.getOrigin()).length();
       start_stagnation_pose_ = current_pose;
-      stagnation_start_time_ = msg.header.stamp;
+      stagnation_start_time_ = current_time;
 
       // if it's not far enough, we are stuck.
       if (displacement < minimum_displacement_)
       {
         starting_demonstration_ = true;
-        ROS_INFO("stagnation!");
       }
     }
   }
@@ -117,23 +119,34 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
     return;
   }
 
-  int status = msg.status_list[0].status;
-  std::string goal_id = msg.status_list[0].goal_id.id;
+  for (unsigned long i=0;i<msg.status_list.size();i++) {
 
-  if (status == actionlib_msgs::GoalStatus::ABORTED)
-  {
-    if (latest_goal_id_ != "uninitialized" && goal_id != latest_goal_id_)
+    int status = msg.status_list[i].status;
+    std::string goal_id = msg.status_list[i].goal_id.id;
+
+    if (status == actionlib_msgs::GoalStatus::ACTIVE)
     {
-      starting_demonstration_ = true;
+      if (goal_id != current_goal_id_)
+      {
+        has_goal_ = true;
+        stagnation_start_time_ = ros::Time::now();
+        current_goal_id_ = goal_id;
+      }
     }
-  }
-  else if (status == actionlib_msgs::GoalStatus::SUCCEEDED)
-  {
-    has_goal_ = false;
-  }
-  else if (status == actionlib_msgs::GoalStatus::ACTIVE)
-  {
-    latest_goal_id_ = goal_id;
+    else if (status == actionlib_msgs::GoalStatus::ABORTED)
+    {
+      if (has_goal_)
+      {
+        starting_demonstration_ = true;
+      }
+    }
+    else if (status == actionlib_msgs::GoalStatus::SUCCEEDED)
+    {
+      if (has_goal_ && current_goal_id_ == goal_id)
+      {
+        has_goal_ = false;
+      }
+    }
   }
 }
 
@@ -145,16 +158,6 @@ void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
     {
       ending_demonstration_ = true;
     }
-  }
-}
-
-void RecoverySupervisor::moveBaseGoalCallback(const geometry_msgs::PoseStamped& msg)
-{
-  ROS_INFO("new goal");
-  if (!demonstrating_)
-  {
-    has_goal_ = true;
-    latest_goal_ = msg;
   }
 }
 
