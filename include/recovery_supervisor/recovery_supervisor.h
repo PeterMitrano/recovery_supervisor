@@ -36,15 +36,19 @@ private:
   bool starting_demonstration_;
   bool ending_demonstration_;
   bool demonstrating_;
+  bool has_goal_;
+  geometry_msgs::PoseStamped latest_goal_;
+  ros::Subscriber cmd_vel_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber joy_sub_;
   ros::Subscriber status_sub_;
+  ros::Subscriber goal_sub_;
   ros::Subscriber local_costmap_sub_;
   ros::Subscriber global_costmap_sub_;
   ros::Time stagnation_start_time_;
-  tf::Pose start_stagnation_pose_;
-
+  std::string latest_goal_id_;
   std::vector<geometry_msgs::Twist> velocities_;
+  tf::Pose start_stagnation_pose_;
 
   /**
    * Logs velocity commands sent to the robot whilst an demonstration is occuring
@@ -74,6 +78,8 @@ private:
    * it will note that an demonstration is needed, and notify the demonstrator
    */
   void moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray& msg);
+
+  void moveBaseGoalCallback(const geometry_msgs::PoseStamped& msg);
 
   void notifyDemonstrator();
 };
