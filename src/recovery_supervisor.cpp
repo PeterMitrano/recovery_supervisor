@@ -80,13 +80,13 @@ void RecoverySupervisor::teleopCallback(const geometry_msgs::Twist& msg)
   if (demonstrating_)
   {
     double magnitude = hypot(msg.linear.x, msg.linear.y);
-    if (magnitude != 0.0 && msg.angular.z != 0.0)
+    if (magnitude != 0.0 || msg.angular.z != 0.0)
     {
+      bag_mutex_.lock();
+      bag_->write("cmd_vel", ros::Time::now(), msg);
+      bag_mutex_.unlock();
     }
   }
-  bag_mutex_.lock();
-  bag_->write("cmd_vel", ros::Time::now(), msg);
-  bag_mutex_.unlock();
 }
 
 void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
@@ -118,10 +118,10 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
       }
     }
   }
-  else
+  else if (demonstrating_)
   {
     bag_mutex_.lock();
-    bag_->write("odom", msg.header.stamp, msg);
+    bag_->write("odom", ros::Time::now(), msg);
     bag_mutex_.unlock();
   }
 }
@@ -131,7 +131,7 @@ void RecoverySupervisor::localCostmapCallback(const map_msgs::OccupancyGridUpdat
   if (demonstrating_)
   {
     bag_mutex_.lock();
-    bag_->write("move_base/local_costmap/costmap_updates", msg.header.stamp, msg);
+    bag_->write("move_base/local_costmap/costmap_updates", ros::Time::now(), msg);
     bag_mutex_.unlock();
   }
 }
@@ -141,7 +141,7 @@ void RecoverySupervisor::globalCostmapCallback(const map_msgs::OccupancyGridUpda
   if (demonstrating_)
   {
     bag_mutex_.lock();
-    bag_->write("move_base/global_costmap/costmap_updates", msg.header.stamp, msg);
+    bag_->write("move_base/global_costmap/costmap_updates", ros::Time::now(), msg);
     bag_mutex_.unlock();
   }
 }
