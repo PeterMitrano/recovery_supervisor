@@ -3,15 +3,29 @@ project(recovery_supervisor)
 
 set(CMAKE_BUILD_TYPE Debug)
 
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+
 find_package(catkin REQUIRED COMPONENTS
+  actionlib_msgs
   geometry_msgs
+  map_msgs
+  nav_msgs
+  rosbag_storage
   roscpp
+  sensor_msgs
+  tf
 )
 
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES recovery_supervisor
-  CATKIN_DEPENDS geometry_msgs roscpp
+  CATKIN_DEPENDS actionlib_msgs
+    geometry_msgs
+    map_msgs
+    nav_msgs
+    rosbag_storage
+    roscpp
+    sensor_msgs
 )
 
 include_directories(

@@ -12,13 +12,14 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>geometry_msgs</depend>
-  <depend>tf</depend>
-  <depend>nav_msgs</depend>
-  <depend>map_msgs</depend>
   <depend>actionlib_msgs</depend>
-  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>map_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>rosbag_storage</depend>
   <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf</depend>
 
   <export>
 

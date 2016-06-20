@@ -6,8 +6,10 @@
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
+#include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
 #include <tf/transform_datatypes.h>
+#include <mutex>
 #include <vector>
 
 namespace recovery_supervisor
@@ -30,7 +32,9 @@ public:
   RecoverySupervisor();
 
 private:
+  int bag_index_;
   int finish_demonstration_button_;
+  int force_demonstration_button_;
   double minimum_displacement_;
   double stagnation_check_period_;
   bool starting_demonstration_;
@@ -46,9 +50,12 @@ private:
   ros::Subscriber local_costmap_sub_;
   ros::Subscriber global_costmap_sub_;
   ros::Time stagnation_start_time_;
+  std::mutex bag_mutex_;
   std::string current_goal_id_;
-  std::vector<geometry_msgs::Twist> velocities_;
+  std::string bag_file_name_;
   tf::Pose start_stagnation_pose_;
+
+  rosbag::Bag* bag_;
 
   /**
    * Logs velocity commands sent to the robot whilst an demonstration is occuring
