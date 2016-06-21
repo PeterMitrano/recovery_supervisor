@@ -9,6 +9,7 @@
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
 #include <tf/transform_datatypes.h>
+#include <tf2_msgs/TFMessage.h>
 #include <mutex>
 #include <vector>
 
@@ -47,6 +48,7 @@ private:
   ros::Subscriber odom_sub_;
   ros::Subscriber joy_sub_;
   ros::Subscriber status_sub_;
+  ros::Subscriber tf_sub_;
   ros::Subscriber local_costmap_sub_;
   ros::Subscriber global_costmap_sub_;
   ros::Time stagnation_start_time_;
@@ -56,6 +58,11 @@ private:
   tf::Pose start_stagnation_pose_;
 
   rosbag::Bag* bag_;
+
+  /**
+   * Logs tf whilst an demonstration is occuring
+   */
+  void tfCallback(const tf2_msgs::TFMessage& msg);
 
   /**
    * Logs velocity commands sent to the robot whilst an demonstration is occuring

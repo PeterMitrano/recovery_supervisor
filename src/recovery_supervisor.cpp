@@ -6,7 +6,7 @@
 namespace recovery_supervisor
 {
 RecoverySupervisor::RecoverySupervisor()
-  : starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false)
+  : starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false), bag_index_(0)
 {
   // fetch parameters
   ros::NodeHandle private_nh("~");
@@ -24,6 +24,7 @@ RecoverySupervisor::RecoverySupervisor()
 
   cmd_vel_sub_ = nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
 
+  tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
   odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
   status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
@@ -142,6 +143,16 @@ void RecoverySupervisor::globalCostmapCallback(const map_msgs::OccupancyGridUpda
   {
     bag_mutex_.lock();
     bag_->write("move_base/global_costmap/costmap_updates", ros::Time::now(), msg);
+    bag_mutex_.unlock();
+  }
+}
+
+void RecoverySupervisor::tfCallback(const tf2_msgs::TFMessage& msg)
+{
+  if (demonstrating_)
+  {
+    bag_mutex_.lock();
+    bag_->write("/tf", ros::Time::now(), msg);
     bag_mutex_.unlock();
   }
 }
