@@ -28,10 +28,12 @@ RecoverySupervisor::RecoverySupervisor()
   odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
   status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
+  local_costmap_update_sub_ =
+      nh.subscribe("move_base/local_costmap/costmap_updates", 100, &RecoverySupervisor::localCostmapUpdateCallback, this);
   local_costmap_sub_ =
-      nh.subscribe("move_base/local_costmap/costmap_updates", 10, &RecoverySupervisor::localCostmapCallback, this);
+      nh.subscribe("move_base/local_costmap/costmap", 100, &RecoverySupervisor::localCostmapCallback, this);
   global_costmap_sub_ =
-      nh.subscribe("move_base/global_costmap/costmap_updates", 10, &RecoverySupervisor::globalCostmapCallback, this);
+      nh.subscribe("move_base/global_costmap/costmap_updates", 100, &RecoverySupervisor::globalCostmapCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
 
@@ -127,7 +129,17 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
   }
 }
 
-void RecoverySupervisor::localCostmapCallback(const map_msgs::OccupancyGridUpdate& msg)
+void RecoverySupervisor::localCostmapCallback(const nav_msgs::OccupancyGrid& msg)
+{
+  if (demonstrating_)
+  {
+    bag_mutex_.lock();
+    bag_->write("move_base/local_costmap/costmap", ros::Time::now(), msg);
+    bag_mutex_.unlock();
+  }
+}
+
+void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg)
 {
   if (demonstrating_)
   {

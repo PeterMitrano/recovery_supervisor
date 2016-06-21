@@ -4,6 +4,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <map_msgs/OccupancyGridUpdate.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
@@ -49,6 +50,7 @@ private:
   ros::Subscriber joy_sub_;
   ros::Subscriber status_sub_;
   ros::Subscriber tf_sub_;
+  ros::Subscriber local_costmap_update_sub_;
   ros::Subscriber local_costmap_sub_;
   ros::Subscriber global_costmap_sub_;
   ros::Time stagnation_start_time_;
@@ -76,7 +78,10 @@ private:
   void odometryCallback(const nav_msgs::Odometry& msg);
 
   /** logs costmaps sent during demonstration */
-  void localCostmapCallback(const map_msgs::OccupancyGridUpdate& msg);
+  void localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg);
+
+  /** logs costmaps sent during demonstration */
+  void localCostmapCallback(const nav_msgs::OccupancyGrid& msg);
 
   /** logs costmaps sent during demonstration */
   void globalCostmapCallback(const map_msgs::OccupancyGridUpdate& msg);
