@@ -164,7 +164,7 @@ void RecoverySupervisor::tfCallback(const tf2_msgs::TFMessage& msg)
   if (demonstrating_)
   {
     bag_mutex_.lock();
-    bag_->write("/tf", ros::Time::now(), msg);
+    bag_->write("tf", ros::Time::now(), msg);
     bag_mutex_.unlock();
   }
 }
