@@ -32,8 +32,8 @@ RecoverySupervisor::RecoverySupervisor()
       nh.subscribe("move_base/local_costmap/costmap_updates", 100, &RecoverySupervisor::localCostmapUpdateCallback, this);
   local_costmap_sub_ =
       nh.subscribe("move_base/local_costmap/costmap", 100, &RecoverySupervisor::localCostmapCallback, this);
-  global_costmap_sub_ =
-      nh.subscribe("move_base/global_costmap/costmap_updates", 100, &RecoverySupervisor::globalCostmapCallback, this);
+  footprint_sub_ =
+      nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
 
@@ -149,12 +149,12 @@ void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGri
   }
 }
 
-void RecoverySupervisor::globalCostmapCallback(const map_msgs::OccupancyGridUpdate& msg)
+void RecoverySupervisor::footprintCallback(const geometry_msgs::PolygonStamped& msg)
 {
   if (demonstrating_)
   {
     bag_mutex_.lock();
-    bag_->write("move_base/global_costmap/costmap_updates", ros::Time::now(), msg);
+    bag_->write("laser_footprint", ros::Time::now(), msg);
     bag_mutex_.unlock();
   }
 }

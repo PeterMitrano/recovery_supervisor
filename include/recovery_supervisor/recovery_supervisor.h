@@ -2,6 +2,7 @@
 
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -19,17 +20,11 @@ namespace recovery_supervisor
 class RecoverySupervisor
 {
 public:
-  /** Main entry point for the node. Subscribes to the following topics
-   * (names are configurable on parameter sever, theres are just defaults):
-   * teleop commands: ~/teleop/cmd_vel geometry_msgs::Twist
-   * odometry: ~/odometry nav_msgs::Odometry
-   * local costmaps: /move_base/local_costmap/costmap_updates map_msgs::OccupancyGridUpdate
-   * global costmaps: /move_base/gobal_costmap/costmap_updates map_msgs::OccupancyGridUpdate
-   * moving obstacles: ~/moving_obstacles ??
-   * labeled static features ~/labeled_features ??
-   * move_base failure: ~/move_base/status actionlib_msgs::GoalStatusArray
-   * joystick for ending demonstration: /joy sensor_msgs::Joy
-   *
+  /** Main entry point for the node.
+   * looks for abortion of move_base or not moving far enough in a given time.
+   * then records from many topics into ros bags.
+   * pressing a button ends the demonstration, closes the bag,
+   * and opens a new one in preparation
    */
   RecoverySupervisor();
 
@@ -50,9 +45,9 @@ private:
   ros::Subscriber joy_sub_;
   ros::Subscriber status_sub_;
   ros::Subscriber tf_sub_;
+  ros::Subscriber footprint_sub_;
   ros::Subscriber local_costmap_update_sub_;
   ros::Subscriber local_costmap_sub_;
-  ros::Subscriber global_costmap_sub_;
   ros::Time stagnation_start_time_;
   std::mutex bag_mutex_;
   std::string current_goal_id_;
@@ -83,14 +78,11 @@ private:
   /** logs costmaps sent during demonstration */
   void localCostmapCallback(const nav_msgs::OccupancyGrid& msg);
 
-  /** logs costmaps sent during demonstration */
-  void globalCostmapCallback(const map_msgs::OccupancyGridUpdate& msg);
-
   /** signal end of teleop */
   void joyCallback(const sensor_msgs::Joy& msg);
 
-  // void MovingObstaclesCallback();
-  // void LabeledStaticFeaturesCallback();
+  /** logs footprint of robot */
+  void footprintCallback(const geometry_msgs::PolygonStamped& msg);
 
   /**
    * logs the status of the move_base goal. If failure is detected,
