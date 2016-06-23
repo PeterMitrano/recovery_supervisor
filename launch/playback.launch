@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name='mapname' default='whole_floor_open_doors_no_trashcans'/>
+
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find vector_navigation_apps)/maps/$(arg map_name).yaml" output="screen"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find recovery_supervisor)/rviz/playback.rviz" output="screen"/>
+</launch>

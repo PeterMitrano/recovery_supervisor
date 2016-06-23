@@ -1,0 +1,8 @@
+<!-- launch file when using vector nav -->
+
+<launch>
+    <arg name="map_name" default="whole_floor_open_doors_no_trashcans"/>
+    <node pkg="map_server" type="map_server" name="map_server"  args="$(find vector_navigation_apps)/maps/$(arg map_name).yaml" output="screen"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find recovery_supervisor)/rviz/failure_pts.rviz" output="screen"/>
+</launch>
+
