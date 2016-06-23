@@ -1,8 +1,8 @@
 #pragma once
 
 #include <actionlib_msgs/GoalStatusArray.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PolygonStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <nav_msgs/OccupancyGrid.h>

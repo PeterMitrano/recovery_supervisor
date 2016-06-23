@@ -29,12 +29,11 @@ RecoverySupervisor::RecoverySupervisor()
   odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
   status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
-  local_costmap_update_sub_ =
-      nh.subscribe("move_base/local_costmap/costmap_updates", 100, &RecoverySupervisor::localCostmapUpdateCallback, this);
+  local_costmap_update_sub_ = nh.subscribe("move_base/local_costmap/costmap_updates", 100,
+                                           &RecoverySupervisor::localCostmapUpdateCallback, this);
   local_costmap_sub_ =
       nh.subscribe("move_base/local_costmap/costmap", 100, &RecoverySupervisor::localCostmapCallback, this);
-  footprint_sub_ =
-      nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
+  footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
   status_pub_ = nh.advertise<std_msgs::Bool>("/move_base/cancel", false);
