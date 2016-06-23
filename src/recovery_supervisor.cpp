@@ -1,4 +1,5 @@
 #include <geometry_msgs/Vector3.h>
+#include <std_msgs/Bool.h>
 #include <stdlib.h>
 
 #include "recovery_supervisor/recovery_supervisor.h"
@@ -36,9 +37,12 @@ RecoverySupervisor::RecoverySupervisor()
       nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
+  status_pub_ = nh.advertise<std_msgs::Bool>("/move_base/cancel", false);
 
   bag_ = new rosbag::Bag();
+  failure_locations_ = new rosbag::Bag();
   bag_->open(bag_file_name_ + std::to_string(bag_index_) + ".bag", rosbag::bagmode::Write);
+  failure_locations_->open("failure_locations.bag", rosbag::bagmode::Write);
 
   ROS_INFO("finish_demonstration_button %d", finish_demonstration_button_);
   ROS_INFO("stagnation_check_period %f", stagnation_check_period_);
@@ -73,6 +77,10 @@ RecoverySupervisor::RecoverySupervisor()
 
       ROS_INFO("Demonstration complete!");
     }
+
+    std_msgs::Bool status;
+    status.data = demonstrating_;
+    status_pub_.publish(status);
 
     ros::spinOnce();
   }
@@ -113,6 +121,8 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
       if (displacement < minimum_displacement_)
       {
         starting_demonstration_ = true;
+        failure_locations_->write("failure_locations", ros::Time::now(), msg);
+
         ROS_INFO("HEARTBEAT: dead");
       }
       else

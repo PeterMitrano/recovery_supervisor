@@ -40,6 +40,7 @@ private:
   bool has_goal_;
   geometry_msgs::PoseStamped latest_goal_;
   ros::Publisher cancel_pub_;
+  ros::Publisher status_pub_;
   ros::Subscriber cmd_vel_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber joy_sub_;
@@ -55,6 +56,7 @@ private:
   tf::Pose start_stagnation_pose_;
 
   rosbag::Bag* bag_;
+  rosbag::Bag* failure_locations_;
 
   /**
    * Logs tf whilst an demonstration is occuring

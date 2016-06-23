@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   rosbag_storage
   roscpp
   sensor_msgs
+  std_msgs
   tf
   tf2_msgs
 )
