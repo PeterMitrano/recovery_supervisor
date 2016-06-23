@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name='mapname' default='whole_floor_open_doors_no_trashcans'/>
+  <arg name='map_name' default='whole_floor_open_doors_no_trashcans'/>
 
   <node name="map_server" pkg="map_server" type="map_server" args="$(find vector_navigation_apps)/maps/$(arg map_name).yaml" output="screen"/>
 
