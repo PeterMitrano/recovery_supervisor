@@ -12,7 +12,6 @@ Panels:
         - /Navigation1
         - /Navigation1/Static Map1
         - /Navigation1/Local Costmap1
-        - /Navigation1/Local Costmap1/Status1
       Splitter Ratio: 0.595238
     Tree Height: 505
   - Class: rviz/Selection
@@ -91,6 +90,14 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Navigation
+    - Alpha: 1
+      Class: rviz/Polygon
+      Color: 25; 255; 0
+      Enabled: true
+      Name: Polygon
+      Topic: /laser_footprint
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 125; 125; 125
@@ -121,11 +128,11 @@ Visualization Manager:
         Value: false
       Name: Current View
       Near Clip Distance: 0.01
-      Scale: 107.323
+      Scale: 242.228
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 3.19663
-      Y: -2.1669
+      X: -4.8965
+      Y: -5.71515
     Saved: ~
 Window Geometry:
   Displays:

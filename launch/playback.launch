@@ -1,8 +1,11 @@
 <?xml version="1.0"?>
 <launch>
   <arg name='map_name' default='preferences_map'/>
+  <arg name='bag_file' default='bags/my_bag0.bag'/>
 
   <node name="map_server" pkg="map_server" type="map_server" args="$(find vector_navigation_apps)/maps/$(arg map_name).yaml" output="screen"/>
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find recovery_supervisor)/rviz/playback.rviz" output="screen"/>
+
+  <node name="bag" pkg="rosbag" type="play" output="screen" args="$(find recovery_supervisor)/$(arg bag_file)"/>
 </launch>
