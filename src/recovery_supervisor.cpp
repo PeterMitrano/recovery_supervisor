@@ -36,7 +36,7 @@ RecoverySupervisor::RecoverySupervisor()
   footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
-  status_pub_ = nh.advertise<std_msgs::Bool>("/move_base/cancel", false);
+  status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
 
   bag_ = new rosbag::Bag();
   failure_locations_ = new rosbag::Bag();

@@ -37,10 +37,17 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_executable(points_to_path
+  src/points_to_path.cpp)
+
 add_executable(recovery_supervisor
   src/recovery_supervisor.cpp)
 
 target_link_libraries(recovery_supervisor
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(points_to_path
   ${catkin_LIBRARIES}
 )
 
