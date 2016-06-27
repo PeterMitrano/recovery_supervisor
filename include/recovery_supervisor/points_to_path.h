@@ -4,6 +4,7 @@
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
+#include <mutex>
 
 namespace points_to_path
 {
@@ -13,6 +14,7 @@ class PointsToPath{
   private:
     bool demonstrating_;
     bool was_demonstrating_;
+    std::mutex path_mutex_;
 
     ros::Publisher path_pub_;
     ros::Subscriber demo_status_sub_;

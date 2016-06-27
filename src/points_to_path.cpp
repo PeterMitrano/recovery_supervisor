@@ -30,22 +30,25 @@ PointsToPath::PointsToPath() : demonstrating_(false), was_demonstrating_(false)
 
 void PointsToPath::demoStatusCallback(const std_msgs::Bool& msg)
 {
+  was_demonstrating_ = demonstrating_;
   demonstrating_ = msg.data;
+
+  if (demonstrating_ && !was_demonstrating_)
+  {
+    //clear and start new path
+    ROS_INFO("starting new path.");
+    path_mutex_.lock();
+    current_path_.poses.clear();
+    current_path_.header.stamp = ros::Time::now();
+    current_path_.header.frame_id = "map";
+    path_mutex_.unlock();
+  }
 }
 
 void PointsToPath::newPointCallback(const geometry_msgs::PointStamped& msg)
 {
   if (demonstrating_)
   {
-    if (!was_demonstrating_)
-    {
-      //clear and start new path
-      ROS_INFO("starting new path.");
-      current_path_.poses.clear();
-      current_path_.header.stamp = ros::Time::now();
-      current_path_.header.frame_id = "map";
-    }
-
     geometry_msgs::PoseStamped new_pose;
     new_pose.header = msg.header;
     new_pose.pose.position.x = msg.point.x;
@@ -56,10 +59,10 @@ void PointsToPath::newPointCallback(const geometry_msgs::PointStamped& msg)
     new_pose.pose.orientation.z = 0;
     new_pose.pose.orientation.w = 1;
 
+    path_mutex_.lock();
     current_path_.poses.push_back(new_pose);
+    path_mutex_.unlock();
   }
-
-  was_demonstrating_ = demonstrating_;
 }
 }
 
