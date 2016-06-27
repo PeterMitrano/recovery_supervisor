@@ -1,7 +1,7 @@
 <!-- launch file when using vector nav -->
 
 <launch>
-    <arg name="filename" default="my_bag"/>
+    <arg name="filename" default="turtlebot_bag"/>
 
     <node pkg="recovery_supervisor" type="recovery_supervisor"
           name="recovery_supervisor" output="screen">
@@ -9,10 +9,8 @@
         <param name="stagnation_check_period" value="35" />
         <param name="bag_file_name" type="str" value="$(find recovery_supervisor)/bags/$(arg filename)" />
 
-        <remap from="odom" to="vector/odometry/local_filtered" />
-        <remap from="move_base/status" to="move_base_navi/status" />
-        <remap from="move_base/cancel" to="move_base_navi/cancel" />
-        <remap from="cmd_vel" to="vector/teleop/cmd_vel" />
+        <remap from="laser_footprint" to="move_base/global_costmap/footprint" />
+        <remap from="cmd_vel" to="cmd_vel_mux/input/teleop" />
         <remap from="demo_path" to="points_to_path/path" />
 
     </node>

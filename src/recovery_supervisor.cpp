@@ -24,7 +24,7 @@ RecoverySupervisor::RecoverySupervisor()
   private_nh.param<std::string>("bag_file_name", bag_file_name_, "mybag");
 
   cmd_vel_sub_ = nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
-  demo_path_sub_ = nh.subscrib("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
+  demo_path_sub_ = nh.subscribe("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
   footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
   odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
@@ -48,6 +48,7 @@ RecoverySupervisor::RecoverySupervisor()
   ROS_INFO("minimum_displacement %f", minimum_displacement_);
   ROS_INFO("bag_file_name %s", bag_->getFileName().c_str());
 
+  ros::Rate r(10);
   while (ros::ok())
   {
     if (starting_demonstration_)
@@ -82,15 +83,20 @@ RecoverySupervisor::RecoverySupervisor()
     status_pub_.publish(status);
 
     ros::spinOnce();
+    r.sleep();
   }
 }
 
 void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
 {
+  if (demonstrating_)
+  {
+  }
 }
 
 void RecoverySupervisor::footprintCallback(const geometry_msgs::PolygonStamped& msg)
 {
+  ROS_INFO_ONCE("Footprint received.");
   if (demonstrating_)
   {
     bag_mutex_.lock();
@@ -101,6 +107,7 @@ void RecoverySupervisor::footprintCallback(const geometry_msgs::PolygonStamped& 
 
 void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
 {
+  ROS_INFO_ONCE("joystick received.");
   if (demonstrating_)
   {
     if (msg.buttons.at(finish_demonstration_button_) == 1)
@@ -116,6 +123,7 @@ void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
 
 void RecoverySupervisor::localCostmapCallback(const nav_msgs::OccupancyGrid& msg)
 {
+  ROS_INFO_ONCE("Local costmap received.");
   if (demonstrating_)
   {
     bag_mutex_.lock();
@@ -126,6 +134,7 @@ void RecoverySupervisor::localCostmapCallback(const nav_msgs::OccupancyGrid& msg
 
 void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg)
 {
+  ROS_INFO_ONCE("Local costmap updates received.");
   if (demonstrating_)
   {
     bag_mutex_.lock();
@@ -136,6 +145,7 @@ void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGri
 
 void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray& msg)
 {
+  ROS_INFO_ONCE("Movebase status received.");
   if (demonstrating_ || msg.status_list.empty())
   {
     return;
@@ -180,6 +190,7 @@ void RecoverySupervisor::notifyDemonstrator()
 
 void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
 {
+  ROS_INFO_ONCE("Odom received.");
   if (!demonstrating_ && has_goal_)
   {
     ros::Time next_check_time = stagnation_start_time_ + ros::Duration(stagnation_check_period_);
@@ -233,6 +244,7 @@ void RecoverySupervisor::teleopCallback(const geometry_msgs::Twist& msg)
 
 void RecoverySupervisor::tfCallback(const tf2_msgs::TFMessage& msg)
 {
+  ROS_INFO_ONCE("tf received.");
   if (demonstrating_)
   {
     bag_mutex_.lock();
