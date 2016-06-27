@@ -7,6 +7,7 @@
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
@@ -39,16 +40,20 @@ private:
   bool demonstrating_;
   bool has_goal_;
   geometry_msgs::PoseStamped latest_goal_;
+
   ros::Publisher cancel_pub_;
   ros::Publisher status_pub_;
+
   ros::Subscriber cmd_vel_sub_;
-  ros::Subscriber odom_sub_;
+  ros::Subscriber demo_path_sub_;
+  ros::Subscriber footprint_sub_;
   ros::Subscriber joy_sub_;
+  ros::Subscriber odom_sub_;
   ros::Subscriber status_sub_;
   ros::Subscriber tf_sub_;
-  ros::Subscriber footprint_sub_;
-  ros::Subscriber local_costmap_update_sub_;
   ros::Subscriber local_costmap_sub_;
+  ros::Subscriber local_costmap_update_sub_;
+
   ros::Time stagnation_start_time_;
   std::mutex bag_mutex_;
   std::string current_goal_id_;
@@ -58,33 +63,20 @@ private:
   rosbag::Bag* bag_;
   rosbag::Bag* failure_locations_;
 
-  /**
-   * Logs tf whilst an demonstration is occuring
-   */
-  void tfCallback(const tf2_msgs::TFMessage& msg);
+  /** logs path coming from points_to_path */
+  void demoPathCallback(const nav_msgs::Path& msg);
 
-  /**
-   * Logs velocity commands sent to the robot whilst an demonstration is occuring
-   */
-  void teleopCallback(const geometry_msgs::Twist& msg);
-
-  /**
-   * Logs pose and determines when the robot is sufficiently stuck that it needs help.
-   * If it stuck, it will note that an demonstration is needed, and notify the demonstrator.
-   */
-  void odometryCallback(const nav_msgs::Odometry& msg);
-
-  /** logs costmaps sent during demonstration */
-  void localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg);
-
-  /** logs costmaps sent during demonstration */
-  void localCostmapCallback(const nav_msgs::OccupancyGrid& msg);
+  /** logs footprint of robot */
+  void footprintCallback(const geometry_msgs::PolygonStamped& msg);
 
   /** signal end of teleop */
   void joyCallback(const sensor_msgs::Joy& msg);
 
-  /** logs footprint of robot */
-  void footprintCallback(const geometry_msgs::PolygonStamped& msg);
+  /** logs costmaps sent during demonstration */
+  void localCostmapCallback(const nav_msgs::OccupancyGrid& msg);
+
+  /** logs costmaps sent during demonstration */
+  void localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg);
 
   /**
    * logs the status of the move_base goal. If failure is detected,
@@ -95,5 +87,22 @@ private:
   void moveBaseGoalCallback(const geometry_msgs::PoseStamped& msg);
 
   void notifyDemonstrator();
+
+  /**
+   * Logs pose and determines when the robot is sufficiently stuck that it needs help.
+   * If it stuck, it will note that an demonstration is needed, and notify the demonstrator.
+   */
+  void odometryCallback(const nav_msgs::Odometry& msg);
+
+  /**
+   * Logs velocity commands sent to the robot whilst an demonstration is occuring
+   */
+  void teleopCallback(const geometry_msgs::Twist& msg);
+
+  /**
+   * Logs tf whilst an demonstration is occuring
+   */
+  void tfCallback(const tf2_msgs::TFMessage& msg);
+
 };
 }

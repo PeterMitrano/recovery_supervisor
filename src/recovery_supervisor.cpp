@@ -7,7 +7,7 @@
 namespace recovery_supervisor
 {
 RecoverySupervisor::RecoverySupervisor()
-  : starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false), bag_index_(0)
+  : bag_index_(0), starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false)
 {
   // fetch parameters
   ros::NodeHandle private_nh("~");
@@ -24,16 +24,16 @@ RecoverySupervisor::RecoverySupervisor()
   private_nh.param<std::string>("bag_file_name", bag_file_name_, "mybag");
 
   cmd_vel_sub_ = nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
-
-  tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
-  odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
+  demo_path_sub_ = nh.subscrib("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
+  footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
+  odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
   status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
-  local_costmap_update_sub_ = nh.subscribe("move_base/local_costmap/costmap_updates", 100,
-                                           &RecoverySupervisor::localCostmapUpdateCallback, this);
+  tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
   local_costmap_sub_ =
       nh.subscribe("move_base/local_costmap/costmap", 100, &RecoverySupervisor::localCostmapCallback, this);
-  footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
+  local_costmap_update_sub_ = nh.subscribe("move_base/local_costmap/costmap_updates", 100,
+                                           &RecoverySupervisor::localCostmapUpdateCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
   status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
@@ -85,18 +85,97 @@ RecoverySupervisor::RecoverySupervisor()
   }
 }
 
-void RecoverySupervisor::teleopCallback(const geometry_msgs::Twist& msg)
+void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
+{
+}
+
+void RecoverySupervisor::footprintCallback(const geometry_msgs::PolygonStamped& msg)
 {
   if (demonstrating_)
   {
-    double magnitude = hypot(msg.linear.x, msg.linear.y);
-    if (magnitude != 0.0 || msg.angular.z != 0.0)
+    bag_mutex_.lock();
+    bag_->write("laser_footprint", ros::Time::now(), msg);
+    bag_mutex_.unlock();
+  }
+}
+
+void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
+{
+  if (demonstrating_)
+  {
+    if (msg.buttons.at(finish_demonstration_button_) == 1)
     {
-      bag_mutex_.lock();
-      bag_->write("cmd_vel", ros::Time::now(), msg);
-      bag_mutex_.unlock();
+      ending_demonstration_ = true;
     }
   }
+  else if (msg.buttons.at(force_demonstration_button_) == 1)
+  {
+    starting_demonstration_ = true;
+  }
+}
+
+void RecoverySupervisor::localCostmapCallback(const nav_msgs::OccupancyGrid& msg)
+{
+  if (demonstrating_)
+  {
+    bag_mutex_.lock();
+    bag_->write("move_base/local_costmap/costmap", ros::Time::now(), msg);
+    bag_mutex_.unlock();
+  }
+}
+
+void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg)
+{
+  if (demonstrating_)
+  {
+    bag_mutex_.lock();
+    bag_->write("move_base/local_costmap/costmap_updates", ros::Time::now(), msg);
+    bag_mutex_.unlock();
+  }
+}
+
+void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray& msg)
+{
+  if (demonstrating_ || msg.status_list.empty())
+  {
+    return;
+  }
+
+  for (unsigned long i = 0; i < msg.status_list.size(); i++)
+  {
+    int status = msg.status_list[i].status;
+    std::string goal_id = msg.status_list[i].goal_id.id;
+
+    if (status == actionlib_msgs::GoalStatus::ACTIVE)
+    {
+      if (goal_id != current_goal_id_)
+      {
+        has_goal_ = true;
+        stagnation_start_time_ = ros::Time::now();
+        current_goal_id_ = goal_id;
+      }
+    }
+    else if (status == actionlib_msgs::GoalStatus::ABORTED)
+    {
+      if (has_goal_)
+      {
+        starting_demonstration_ = true;
+      }
+    }
+    else if (status == actionlib_msgs::GoalStatus::SUCCEEDED)
+    {
+      if (has_goal_ && current_goal_id_ == goal_id)
+      {
+        has_goal_ = false;
+      }
+    }
+  }
+}
+
+void RecoverySupervisor::notifyDemonstrator()
+{
+  // do we want a full nav? or just until we're unlikely to get stuck anymore
+  ROS_INFO("Help me! I'm stuck. Please navigate me to my goal.");
 }
 
 void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
@@ -138,33 +217,17 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
   }
 }
 
-void RecoverySupervisor::localCostmapCallback(const nav_msgs::OccupancyGrid& msg)
+void RecoverySupervisor::teleopCallback(const geometry_msgs::Twist& msg)
 {
   if (demonstrating_)
   {
-    bag_mutex_.lock();
-    bag_->write("move_base/local_costmap/costmap", ros::Time::now(), msg);
-    bag_mutex_.unlock();
-  }
-}
-
-void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg)
-{
-  if (demonstrating_)
-  {
-    bag_mutex_.lock();
-    bag_->write("move_base/local_costmap/costmap_updates", ros::Time::now(), msg);
-    bag_mutex_.unlock();
-  }
-}
-
-void RecoverySupervisor::footprintCallback(const geometry_msgs::PolygonStamped& msg)
-{
-  if (demonstrating_)
-  {
-    bag_mutex_.lock();
-    bag_->write("laser_footprint", ros::Time::now(), msg);
-    bag_mutex_.unlock();
+    double magnitude = hypot(msg.linear.x, msg.linear.y);
+    if (magnitude != 0.0 || msg.angular.z != 0.0)
+    {
+      bag_mutex_.lock();
+      bag_->write("cmd_vel", ros::Time::now(), msg);
+      bag_mutex_.unlock();
+    }
   }
 }
 
@@ -178,67 +241,6 @@ void RecoverySupervisor::tfCallback(const tf2_msgs::TFMessage& msg)
   }
 }
 
-// void MovingObstaclesCallback();
-// void LabeledStaticFeaturesCallback();
-
-void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray& msg)
-{
-  if (demonstrating_ || msg.status_list.empty())
-  {
-    return;
-  }
-
-  for (unsigned long i = 0; i < msg.status_list.size(); i++)
-  {
-    int status = msg.status_list[i].status;
-    std::string goal_id = msg.status_list[i].goal_id.id;
-
-    if (status == actionlib_msgs::GoalStatus::ACTIVE)
-    {
-      if (goal_id != current_goal_id_)
-      {
-        has_goal_ = true;
-        stagnation_start_time_ = ros::Time::now();
-        current_goal_id_ = goal_id;
-      }
-    }
-    else if (status == actionlib_msgs::GoalStatus::ABORTED)
-    {
-      if (has_goal_)
-      {
-        starting_demonstration_ = true;
-      }
-    }
-    else if (status == actionlib_msgs::GoalStatus::SUCCEEDED)
-    {
-      if (has_goal_ && current_goal_id_ == goal_id)
-      {
-        has_goal_ = false;
-      }
-    }
-  }
-}
-
-void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
-{
-  if (demonstrating_)
-  {
-    if (msg.buttons.at(finish_demonstration_button_) == 1)
-    {
-      ending_demonstration_ = true;
-    }
-  }
-  else if (msg.buttons.at(force_demonstration_button_) == 1)
-  {
-    starting_demonstration_ = true;
-  }
-}
-
-void RecoverySupervisor::notifyDemonstrator()
-{
-  // do we want a full nav? or just until we're unlikely to get stuck anymore
-  ROS_INFO("Help me! I'm stuck. Please navigate me to my goal.");
-}
 }
 
 int main(int argc, char** argv)
