@@ -9,6 +9,7 @@
         <param name="stagnation_check_period" value="35" />
         <param name="bag_file_name" type="str" value="$(find recovery_supervisor)/bags/$(arg filename)" />
 
+        <remap from="straf_recovery_cycles" to="/move_base/straf_recovery/cycles" />
         <remap from="odom" to="vector/odometry/local_filtered" />
         <remap from="move_base/status" to="move_base_navi/status" />
         <remap from="move_base/cancel" to="move_base_navi/cancel" />

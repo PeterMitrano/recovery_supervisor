@@ -9,6 +9,7 @@
         <param name="stagnation_check_period" value="35" />
         <param name="bag_file_name" type="str" value="$(find recovery_supervisor)/bags/$(arg filename)" />
 
+        <remap from="straf_recovery_cycles" to="/move_base/straf_recovery/cycles" />
         <remap from="laser_footprint" to="move_base/global_costmap/footprint" />
         <remap from="cmd_vel" to="cmd_vel_mux/input/teleop" />
         <remap from="demo_path" to="points_to_path/path" />

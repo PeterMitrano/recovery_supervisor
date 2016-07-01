@@ -11,6 +11,7 @@
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
+#include <std_msgs/Int32.h>
 #include <tf/transform_datatypes.h>
 #include <tf2_msgs/TFMessage.h>
 #include <mutex>
@@ -33,6 +34,8 @@ private:
   int bag_index_;
   int finish_demonstration_button_;
   int force_demonstration_button_;
+  int maximum_straf_count_;
+  int straf_count_;
   double minimum_displacement_;
   double stagnation_check_period_;
   bool starting_demonstration_;
@@ -48,11 +51,12 @@ private:
   ros::Subscriber demo_path_sub_;
   ros::Subscriber footprint_sub_;
   ros::Subscriber joy_sub_;
-  ros::Subscriber odom_sub_;
-  ros::Subscriber status_sub_;
-  ros::Subscriber tf_sub_;
   ros::Subscriber local_costmap_sub_;
   ros::Subscriber local_costmap_update_sub_;
+  ros::Subscriber odom_sub_;
+  ros::Subscriber status_sub_;
+  ros::Subscriber straf_recovery_sub_;
+  ros::Subscriber tf_sub_;
 
   ros::Time stagnation_start_time_;
   std::mutex bag_mutex_;
@@ -103,6 +107,9 @@ private:
    * Logs tf whilst an demonstration is occuring
    */
   void tfCallback(const tf2_msgs::TFMessage& msg);
+
+  /** logs straf recovery instances */
+  void strafRecoveryCallback(const std_msgs::Int32& msg);
 
 };
 }

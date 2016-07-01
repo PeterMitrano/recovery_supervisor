@@ -7,16 +7,14 @@
 namespace recovery_supervisor
 {
 RecoverySupervisor::RecoverySupervisor()
-  : bag_index_(0), starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false)
+  : bag_index_(0), straf_count_(0), starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false)
 {
   // fetch parameters
   ros::NodeHandle private_nh("~");
   ros::NodeHandle nh;
   private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
   private_nh.param<int>("force_demonstration_button", force_demonstration_button_, 6);
-
-  // controls how long between checks for lack of progress (seconds)
-  private_nh.param<double>("stagnation_check_period", stagnation_check_period_, 20);
+  private_nh.param<int>("maximum_straf_count", maximum_straf_count_, 2);
 
   // controls how far the robot must move in stagnation_check_period (meters)
   private_nh.param<double>("minimum_displacement", minimum_displacement_, 1.5);
@@ -28,12 +26,13 @@ RecoverySupervisor::RecoverySupervisor()
   footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
   odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
-  status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
-  tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
   local_costmap_sub_ =
       nh.subscribe("move_base/local_costmap/costmap", 100, &RecoverySupervisor::localCostmapCallback, this);
   local_costmap_update_sub_ = nh.subscribe("move_base/local_costmap/costmap_updates", 100,
                                            &RecoverySupervisor::localCostmapUpdateCallback, this);
+  status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
+  straf_recovery_sub_ = nh.subscribe("straf_recovery_cycles", 1, &RecoverySupervisor::strafRecoveryCallback, this);
+  tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
   status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
@@ -44,7 +43,6 @@ RecoverySupervisor::RecoverySupervisor()
   failure_locations_->open("failure_locations.bag", rosbag::bagmode::Write);
 
   ROS_INFO("finish_demonstration_button %d", finish_demonstration_button_);
-  ROS_INFO("stagnation_check_period %f", stagnation_check_period_);
   ROS_INFO("minimum_displacement %f", minimum_displacement_);
   ROS_INFO("bag_file_name %s", bag_->getFileName().c_str());
 
@@ -225,6 +223,27 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
     bag_mutex_.lock();
     bag_->write("odom", ros::Time::now(), msg);
     bag_mutex_.unlock();
+  }
+}
+
+void RecoverySupervisor::strafRecoveryCallback(const std_msgs::Int32& msg)
+{
+  // this shouldn't happen, but just in case, ignore it
+  if (demonstrating_)
+  {
+    return;
+  }
+
+  straf_count_++;
+
+  ROS_INFO_ONCE("straf recovery count: %d, my count: %d", msg.data, straf_count_);
+
+  if (straf_count_ == maximum_straf_count_)
+  {
+    // we've recovered the max number of allowed times.
+    // consider this failure and reset.
+    starting_demonstration_ = true;
+    straf_count_ = 0;
   }
 }
 
