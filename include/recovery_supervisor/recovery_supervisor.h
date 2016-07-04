@@ -3,6 +3,7 @@
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Point.h>
 #include <geometry_msgs/Twist.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -43,8 +44,11 @@ private:
   bool demonstrating_;
   bool has_goal_;
   geometry_msgs::PoseStamped latest_goal_;
+  geometry_msgs::Pose latest_pose_;
+  geometry_msgs::Point last_straf_location_;
 
   ros::Publisher cancel_pub_;
+  ros::Publisher failure_location_pub_;
   ros::Publisher status_pub_;
 
   ros::Subscriber cmd_vel_sub_;
@@ -61,11 +65,10 @@ private:
   ros::Time stagnation_start_time_;
   std::mutex bag_mutex_;
   std::string current_goal_id_;
-  std::string bag_file_name_;
+  std::string bag_file_directory_;
   tf::Pose start_stagnation_pose_;
 
   rosbag::Bag* bag_;
-  rosbag::Bag* failure_locations_;
 
   /** logs path coming from points_to_path */
   void demoPathCallback(const nav_msgs::Path& msg);
@@ -92,10 +95,7 @@ private:
 
   void notifyDemonstrator();
 
-  /**
-   * Logs pose and determines when the robot is sufficiently stuck that it needs help.
-   * If it stuck, it will note that an demonstration is needed, and notify the demonstrator.
-   */
+  /** odom for publishing failure locations */
   void odometryCallback(const nav_msgs::Odometry& msg);
 
   /**
@@ -108,7 +108,7 @@ private:
    */
   void tfCallback(const tf2_msgs::TFMessage& msg);
 
-  /** logs straf recovery instances */
+  /** logs straf recovery instances. Counting these gives us failure information */
   void strafRecoveryCallback(const std_msgs::Int32& msg);
 
 };

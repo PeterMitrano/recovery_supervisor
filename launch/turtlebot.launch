@@ -1,13 +1,13 @@
 <!-- launch file when using vector nav -->
 
 <launch>
-    <arg name="filename" default="turtlebot_bag"/>
+    <arg name="filename" default="turtlebot_bags"/>
 
     <node pkg="recovery_supervisor" type="recovery_supervisor"
           name="recovery_supervisor" output="screen">
 
         <param name="stagnation_check_period" value="35" />
-        <param name="bag_file_name" type="str" value="$(find recovery_supervisor)/bags/$(arg filename)" />
+        <param name="bag_file_directory" type="str" value="$(find recovery_supervisor)/bags/$(arg filename)" />
 
         <remap from="straf_recovery_cycles" to="/move_base/straf_recovery/cycles" />
         <remap from="laser_footprint" to="move_base/global_costmap/footprint" />
