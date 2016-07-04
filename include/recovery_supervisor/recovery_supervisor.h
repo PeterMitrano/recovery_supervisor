@@ -6,13 +6,13 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Twist.h>
 #include <map_msgs/OccupancyGridUpdate.h>
+#include <move_base_msgs/RecoveryStatus.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
-#include <std_msgs/Int32.h>
 #include <tf/transform_datatypes.h>
 #include <tf2_msgs/TFMessage.h>
 #include <mutex>
@@ -35,8 +35,8 @@ private:
   int bag_index_;
   int finish_demonstration_button_;
   int force_demonstration_button_;
-  int maximum_straf_count_;
-  int straf_count_;
+  int maximum_recovery_count_;
+  int recovery_count_;
   double minimum_displacement_;
   double stagnation_check_period_;
   bool starting_demonstration_;
@@ -45,7 +45,7 @@ private:
   bool has_goal_;
   geometry_msgs::PoseStamped latest_goal_;
   geometry_msgs::Pose latest_pose_;
-  geometry_msgs::Point last_straf_location_;
+  geometry_msgs::Point last_recovery_location_;
 
   ros::Publisher cancel_pub_;
   ros::Publisher failure_location_pub_;
@@ -59,7 +59,7 @@ private:
   ros::Subscriber local_costmap_update_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber status_sub_;
-  ros::Subscriber straf_recovery_sub_;
+  ros::Subscriber recovery_status_sub_;
   ros::Subscriber tf_sub_;
 
   ros::Time stagnation_start_time_;
@@ -108,8 +108,8 @@ private:
    */
   void tfCallback(const tf2_msgs::TFMessage& msg);
 
-  /** logs straf recovery instances. Counting these gives us failure information */
-  void strafRecoveryCallback(const std_msgs::Int32& msg);
+  /** logs recovery instances. Counting these gives us failure information */
+  void recoveryCallback(const move_base_msgs::RecoveryStatus& msg);
 
 };
 }

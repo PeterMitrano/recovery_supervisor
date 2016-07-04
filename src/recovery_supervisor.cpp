@@ -7,14 +7,14 @@
 namespace recovery_supervisor
 {
 RecoverySupervisor::RecoverySupervisor()
-  : bag_index_(0), straf_count_(0), starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false)
+  : bag_index_(0), recovery_count_(0), starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false)
 {
   // fetch parameters
   ros::NodeHandle private_nh("~");
   ros::NodeHandle nh;
   private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
   private_nh.param<int>("force_demonstration_button", force_demonstration_button_, 6);
-  private_nh.param<int>("maximum_straf_count", maximum_straf_count_, 2);
+  private_nh.param<int>("maximum_recovery_count", maximum_recovery_count_, 2);
 
   // controls how far the robot must move in stagnation_check_period (meters)
   private_nh.param<double>("minimum_displacement", minimum_displacement_, 2.0);
@@ -32,7 +32,7 @@ RecoverySupervisor::RecoverySupervisor()
                                            &RecoverySupervisor::localCostmapUpdateCallback, this);
   odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
   status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
-  straf_recovery_sub_ = nh.subscribe("straf_recovery_cycles", 10, &RecoverySupervisor::strafRecoveryCallback, this);
+  recovery_status_sub_ = nh.subscribe("move_base/recovery_status", 10, &RecoverySupervisor::recoveryCallback, this);
   tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
@@ -62,7 +62,7 @@ RecoverySupervisor::RecoverySupervisor()
 
   ROS_INFO("finish_demonstration_button %d", finish_demonstration_button_);
   ROS_INFO("minimum_displacement %f", minimum_displacement_);
-  ROS_INFO("maximum_straf_count %d", maximum_straf_count_);
+  ROS_INFO("maximum_recovery_count %d", maximum_recovery_count_);
   ROS_INFO("bag_file_directory %s", bag_name.c_str());
 
   bag_->open(bag_name, rosbag::bagmode::Write);
@@ -220,7 +220,7 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
   }
 }
 
-void RecoverySupervisor::strafRecoveryCallback(const std_msgs::Int32& msg)
+void RecoverySupervisor::recoveryCallback(const move_base_msgs::RecoveryStatus& msg)
 {
   // this shouldn't happen, but just in case, ignore it
   if (demonstrating_ || !has_goal_)
@@ -228,35 +228,39 @@ void RecoverySupervisor::strafRecoveryCallback(const std_msgs::Int32& msg)
     return;
   }
 
-  straf_count_++;
-
-  ROS_INFO("straf recovery count: %d, my count: %d", msg.data, straf_count_);
-
-  tf::Stamped<tf::Point> latest_tf_pose;
-  tf::pointMsgToTF(latest_pose_.position, latest_tf_pose);
-
-  tf::Stamped<tf::Point> last_straf_tf_pose;
-  tf::pointMsgToTF(last_straf_location_, last_straf_tf_pose);
-
-  double displacement_since_last_straf = (last_straf_tf_pose - latest_tf_pose).length();
-
-  ROS_INFO("displacement_since_last_straf %f", displacement_since_last_straf);
-
-  // if we've moved far enough, reset.
-  if (displacement_since_last_straf > minimum_displacement_)
+  //if we've reached the end of our recovery behaviors
+  if (msg.index == msg.size-1)
   {
-    straf_count_ = 0;
-  }
+    recovery_count_++;
 
-  last_straf_location_ = latest_pose_.position;
+    ROS_INFO("recovery count: %d", recovery_count_);
 
-  if (straf_count_ > maximum_straf_count_)
-  {
-    // we've recovered the max number of allowed times in the same area
-    // consider this failure and reset.
-    ROS_WARN("too many strafs.");
-    starting_demonstration_ = true;
-    straf_count_ = 0;
+    tf::Stamped<tf::Point> latest_tf_pose;
+    tf::pointMsgToTF(latest_pose_.position, latest_tf_pose);
+
+    tf::Stamped<tf::Point> last_recovery_tf_pose;
+    tf::pointMsgToTF(last_recovery_location_, last_recovery_tf_pose);
+
+    double displacement_since_last_recovery = (last_recovery_tf_pose - latest_tf_pose).length();
+
+    ROS_INFO("displacement_since_last_recovery %f", displacement_since_last_recovery);
+
+    // if we've moved far enough, reset.
+    if (displacement_since_last_recovery > minimum_displacement_)
+    {
+      recovery_count_ = 0;
+    }
+
+    last_recovery_location_ = latest_pose_.position;
+
+    if (recovery_count_ > maximum_recovery_count_)
+    {
+      // we've recovered the max number of allowed times in the same area
+      // consider this failure and reset.
+      ROS_WARN("too many recoverys.");
+      starting_demonstration_ = true;
+      recovery_count_ = 0;
+    }
   }
 }
 
