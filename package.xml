@@ -14,6 +14,7 @@
 
   <depend>actionlib_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>move_base_msgs</depend>
   <depend>map_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>rosbag_storage</depend>

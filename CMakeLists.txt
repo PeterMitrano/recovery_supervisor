@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   geometry_msgs
   map_msgs
+  move_base_msgs
   nav_msgs
   rosbag_storage
   roscpp
@@ -24,6 +25,7 @@ catkin_package(
   CATKIN_DEPENDS actionlib_msgs
     geometry_msgs
     map_msgs
+    move_base_msgs
     nav_msgs
     rosbag_storage
     roscpp

@@ -18,5 +18,9 @@
 
     </node>
 
+    <node pkg="recovery_supervisor" name="points_to_path" type="points_to_path"/>
+
+    <include file="$(find nav_points)/launch/rail.launch"/>
+
 </launch>
 
