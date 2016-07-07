@@ -44,8 +44,8 @@ private:
   bool demonstrating_;
   bool has_goal_;
   geometry_msgs::PoseStamped latest_goal_;
-  geometry_msgs::Pose latest_pose_;
-  geometry_msgs::Point last_recovery_location_;
+  geometry_msgs::PoseStamped latest_pose_;
+  geometry_msgs::PoseStamped last_recovery_pose_;
 
   ros::Publisher cancel_pub_;
   ros::Publisher failure_location_pub_;
@@ -111,5 +111,7 @@ private:
   /** logs recovery instances. Counting these gives us failure information */
   void recoveryCallback(const move_base_msgs::RecoveryStatus& msg);
 
+  /** helper function for calculating euclidian distance */
+  double dist(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2);
 };
 }

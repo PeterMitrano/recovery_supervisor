@@ -14,7 +14,7 @@ RecoverySupervisor::RecoverySupervisor()
   ros::NodeHandle nh;
   private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
   private_nh.param<int>("force_demonstration_button", force_demonstration_button_, 6);
-  private_nh.param<int>("maximum_recovery_count", maximum_recovery_count_, 2);
+  private_nh.param<int>("maximum_recovery_count", maximum_recovery_count_, 8);
 
   // controls how far the robot must move in stagnation_check_period (meters)
   private_nh.param<double>("minimum_displacement", minimum_displacement_, 2.0);
@@ -37,7 +37,7 @@ RecoverySupervisor::RecoverySupervisor()
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
   status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
-  failure_location_pub_ = private_nh.advertise<geometry_msgs::Pose>("failure_locations", false);
+  failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
 
   bag_ = new rosbag::Bag();
 
@@ -76,14 +76,6 @@ RecoverySupervisor::RecoverySupervisor()
       starting_demonstration_ = false;
       has_goal_ = false;
       demonstrating_ = true;
-
-      // log pose of failure and cancel goal
-
-      failure_location_pub_.publish(latest_pose_);
-
-      actionlib_msgs::GoalID cancel_msg;
-      cancel_msg.stamp = ros::Time(0);
-      cancel_pub_.publish(cancel_msg);
     }
 
     if (ending_demonstration_)
@@ -95,10 +87,11 @@ RecoverySupervisor::RecoverySupervisor()
       bag_mutex_.lock();
       bag_->close();
       bag_index_++;
-      bag_->open(bag_file_directory_ + std::to_string(bag_index_) + ".bag", rosbag::bagmode::Write);
+      std::string bag_name = bag_file_directory_ + "/" + std::to_string(bag_index_) + ".bag";
+      bag_->open(bag_name, rosbag::bagmode::Write);
       bag_mutex_.unlock();
 
-      ROS_INFO("Demonstration complete!");
+      ROS_INFO("Demonstrations disabled.");
     }
 
     std_msgs::Bool status;
@@ -208,7 +201,7 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
 void RecoverySupervisor::notifyDemonstrator()
 {
   // do we want a full nav? or just until we're unlikely to get stuck anymore
-  ROS_INFO("Help me! I'm stuck. Please navigate me to my goal.");
+  ROS_INFO("Demonstrations enabled.");
 }
 
 void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
@@ -216,51 +209,43 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
   ROS_INFO_ONCE("odom received.");
   if (!demonstrating_)
   {
-    latest_pose_ = msg.pose.pose;
+    latest_pose_.pose = msg.pose.pose;
+    latest_pose_.header = msg.header;
   }
+
+  // check for big localizaion jumps
 }
 
 void RecoverySupervisor::recoveryCallback(const move_base_msgs::RecoveryStatus& msg)
 {
-  // this shouldn't happen, but just in case, ignore it
-  if (demonstrating_ || !has_goal_)
+  // Receiving a message indicates a demonstration is needed
+  // here we want to enable demonstration in rviz
+  starting_demonstration_ = true;
+
+  recovery_count_++;
+  ROS_INFO("new recovery (%s). recovery count: %d", msg.name.c_str(), recovery_count_);
+
+  failure_location_pub_.publish(latest_pose_);
+
+  double displacement_since_last_recovery = dist(latest_pose_, last_recovery_pose_);
+
+  // if we've moved far enough, we must be making progress so reset recovery count
+  if (displacement_since_last_recovery > minimum_displacement_)
   {
-    return;
+    recovery_count_ = 0;
   }
 
-  //if we've reached the end of our recovery behaviors
-  if (msg.index == msg.size-1)
+  last_recovery_pose_ = latest_pose_;
+
+  if (recovery_count_ > maximum_recovery_count_)
   {
-    recovery_count_++;
-
-    ROS_INFO("recovery count: %d", recovery_count_);
-
-    tf::Stamped<tf::Point> latest_tf_pose;
-    tf::pointMsgToTF(latest_pose_.position, latest_tf_pose);
-
-    tf::Stamped<tf::Point> last_recovery_tf_pose;
-    tf::pointMsgToTF(last_recovery_location_, last_recovery_tf_pose);
-
-    double displacement_since_last_recovery = (last_recovery_tf_pose - latest_tf_pose).length();
-
-    ROS_INFO("displacement_since_last_recovery %f", displacement_since_last_recovery);
-
-    // if we've moved far enough, reset.
-    if (displacement_since_last_recovery > minimum_displacement_)
-    {
-      recovery_count_ = 0;
-    }
-
-    last_recovery_location_ = latest_pose_.position;
-
-    if (recovery_count_ > maximum_recovery_count_)
-    {
-      // we've recovered the max number of allowed times in the same area
-      // consider this failure and reset.
-      ROS_WARN("too many recoverys.");
-      starting_demonstration_ = true;
-      recovery_count_ = 0;
-    }
+    // we've recovered the max number of allowed times in the same area
+    // consider this failure and cancel goal.
+    actionlib_msgs::GoalID cancel_msg;
+    cancel_msg.stamp = ros::Time(0);
+    cancel_pub_.publish(cancel_msg);
+    ROS_WARN("too many recoverys. Cancelling nav_goal for safety.");
+    recovery_count_ = 0;
   }
 }
 
@@ -287,6 +272,17 @@ void RecoverySupervisor::tfCallback(const tf2_msgs::TFMessage& msg)
     bag_->write("tf", ros::Time::now(), msg);
     bag_mutex_.unlock();
   }
+}
+
+double RecoverySupervisor::dist(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2)
+{
+  tf::Stamped<tf::Point> tf_p1;
+  tf::pointMsgToTF(p1.pose.position, tf_p1);
+
+  tf::Stamped<tf::Point> tf_p2;
+  tf::pointMsgToTF(p2.pose.position, tf_p2);
+
+  return (tf_p2 - tf_p1).length();
 }
 
 }
