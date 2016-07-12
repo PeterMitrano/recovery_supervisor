@@ -37,13 +37,16 @@ private:
   int force_demonstration_button_;
   int maximum_first_recovery_count_;
   int first_recovery_count_;
+  double maximum_displacement_jump_;
   double minimum_displacement_;
   double stagnation_check_period_;
   bool starting_demonstration_;
   bool ending_demonstration_;
   bool demonstrating_;
   bool has_goal_;
-  geometry_msgs::PoseStamped latest_goal_;
+  bool first_msg_;
+  bool first_odom_msg_;
+
   geometry_msgs::PoseStamped latest_pose_;
   geometry_msgs::PoseStamped last_recovery_pose_;
 
@@ -57,6 +60,7 @@ private:
   ros::Subscriber joy_sub_;
   ros::Subscriber local_costmap_sub_;
   ros::Subscriber local_costmap_update_sub_;
+  ros::Subscriber new_goal_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber status_sub_;
   ros::Subscriber recovery_status_sub_;
@@ -64,8 +68,8 @@ private:
 
   ros::Time stagnation_start_time_;
   std::mutex bag_mutex_;
-  std::string current_goal_id_;
   std::string bag_file_directory_;
+  std::string current_goal_id_;
   tf::Pose start_stagnation_pose_;
 
   rosbag::Bag* bag_;
@@ -78,12 +82,14 @@ private:
 
   /** signal end of teleop */
   void joyCallback(const sensor_msgs::Joy& msg);
-
   /** logs costmaps sent during demonstration */
   void localCostmapCallback(const nav_msgs::OccupancyGrid& msg);
 
   /** logs costmaps sent during demonstration */
   void localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg);
+
+  /** signal start of new goal (either clicked or sent as msg) */
+  void newGoalCallback(const geometry_msgs::PoseStamped& msg);
 
   /**
    * logs the status of the move_base goal. If failure is detected,

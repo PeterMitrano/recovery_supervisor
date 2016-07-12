@@ -13,6 +13,8 @@ RecoverySupervisor::RecoverySupervisor()
   , ending_demonstration_(false)
   , demonstrating_(false)
   , has_goal_(false)
+  , first_msg_(true)
+  , first_odom_msg_(true)
 {
   // fetch parameters
   ros::NodeHandle private_nh("~");
@@ -23,6 +25,9 @@ RecoverySupervisor::RecoverySupervisor()
 
   // controls how far the robot must move in stagnation_check_period (meters)
   private_nh.param<double>("minimum_displacement", minimum_displacement_, 2.0);
+
+  // for checking localization errors
+  private_nh.param<double>("maximum_displacement_jump", maximum_displacement_jump_, 5.0);
 
   std::string bag_file_directory_prefix;
   private_nh.param<std::string>("bag_file_directory_prefix", bag_file_directory_prefix, "my_bags");
@@ -35,6 +40,7 @@ RecoverySupervisor::RecoverySupervisor()
       nh.subscribe("move_base/local_costmap/costmap", 100, &RecoverySupervisor::localCostmapCallback, this);
   local_costmap_update_sub_ = nh.subscribe("move_base/local_costmap/costmap_updates", 100,
                                            &RecoverySupervisor::localCostmapUpdateCallback, this);
+  new_goal_sub_ = nh.subscribe("move_base_simple/goal", 1, &RecoverySupervisor::newGoalCallback, this);
   odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
   status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
   recovery_status_sub_ = nh.subscribe("move_base/recovery_status", 10, &RecoverySupervisor::recoveryCallback, this);
@@ -78,7 +84,6 @@ RecoverySupervisor::RecoverySupervisor()
     {
       notifyDemonstrator();
       starting_demonstration_ = false;
-      has_goal_ = false;
       demonstrating_ = true;
     }
 
@@ -163,58 +168,87 @@ void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGri
   }
 }
 
+void RecoverySupervisor::newGoalCallback(const geometry_msgs::PoseStamped& msg)
+{
+  has_goal_ = true;
+  ROS_DEBUG("new goal sent!");
+  bag_mutex_.lock();
+  bag_->write("move_base_simple/goal", ros::Time::now(), msg);
+  bag_mutex_.unlock();
+}
+
 void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray& msg)
 {
   ROS_INFO_ONCE("Movebase status received.");
+
+  if (first_msg_)
+  {
+    first_msg_ = false;
+    if (msg.status_list.size() > 0)
+    {
+      current_goal_id_ = msg.status_list[0].goal_id.id;
+    }
+  }
+
   if (demonstrating_ || msg.status_list.empty())
   {
     return;
   }
 
-  for (unsigned long i = 0; i < msg.status_list.size(); i++)
-  {
-    int status = msg.status_list[i].status;
-    std::string goal_id = msg.status_list[i].goal_id.id;
+  actionlib_msgs::GoalStatus oldest_msg = msg.status_list[0];
+  int status = oldest_msg.status;
+  std::string goal_id = oldest_msg.goal_id.id;
 
-    if (status == actionlib_msgs::GoalStatus::ACTIVE)
+  if (status == actionlib_msgs::GoalStatus::ABORTED)
+  {
+    if (has_goal_)
     {
-      if (goal_id != current_goal_id_)
-      {
-        has_goal_ = true;
-        stagnation_start_time_ = ros::Time::now();
-        current_goal_id_ = goal_id;
-      }
+      starting_demonstration_ = true;
     }
-    else if (status == actionlib_msgs::GoalStatus::ABORTED)
+    has_goal_ = false;
+    current_goal_id_ = goal_id;
+  }
+  else if (status == actionlib_msgs::GoalStatus::SUCCEEDED)
+  {
+    if (current_goal_id_ != goal_id)
     {
-      if (has_goal_)
-      {
-        starting_demonstration_ = true;
-      }
-    }
-    else if (status == actionlib_msgs::GoalStatus::SUCCEEDED)
-    {
-      if (has_goal_ && current_goal_id_ == goal_id)
-      {
-        has_goal_ = false;
-      }
+      has_goal_ = false;
+
+      // we successfully reached our goal! bag it.
+      ROS_DEBUG("Goal reached!");
+      bag_mutex_.lock();
+      bag_->write("goals_reached", ros::Time::now(), latest_pose_);
+      bag_mutex_.unlock();
+
+      current_goal_id_ = goal_id;
     }
   }
 }
 
 void RecoverySupervisor::notifyDemonstrator()
 {
-  // do we want a full nav? or just until we're unlikely to get stuck anymore
   ROS_INFO("Demonstrations enabled.");
 }
 
 void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
 {
   ROS_INFO_ONCE("odom received.");
-  if (!demonstrating_)
+
+  bag_mutex_.lock();
+  bag_->write("odom", ros::Time::now(), msg);
+  bag_mutex_.unlock();
+
+  if (first_odom_msg_)
   {
-    //check for localization jumps
-    double displacement = dist(latest_pose_, msg.pose.pose);
+    first_odom_msg_ = false;
+  }
+  else
+  {
+    // check for localization jumps
+    geometry_msgs::PoseStamped curent_pose;
+    curent_pose.pose = msg.pose.pose;
+    curent_pose.header = msg.header;
+    double displacement = dist(latest_pose_, curent_pose);
     if (displacement > maximum_displacement_jump_)
     {
       ROS_ERROR("Localization failure: jumped by %f meters", displacement);
@@ -222,10 +256,10 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
       msg.id = current_goal_id_;
       cancel_pub_.publish(msg);
     }
-
-    latest_pose_.pose = msg.pose.pose;
-    latest_pose_.header = msg.header;
   }
+
+  latest_pose_.pose = msg.pose.pose;
+  latest_pose_.header = msg.header;
 
   double displacement_since_last_recovery = dist(latest_pose_, last_recovery_pose_);
 
