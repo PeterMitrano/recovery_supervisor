@@ -213,6 +213,16 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
   ROS_INFO_ONCE("odom received.");
   if (!demonstrating_)
   {
+    //check for localization jumps
+    double displacement = dist(latest_pose_, msg.pose.pose);
+    if (displacement > maximum_displacement_jump_)
+    {
+      ROS_ERROR("Localization failure: jumped by %f meters", displacement);
+      actionlib_msgs::GoalID msg;
+      msg.id = current_goal_id_;
+      cancel_pub_.publish(msg);
+    }
+
     latest_pose_.pose = msg.pose.pose;
     latest_pose_.header = msg.header;
   }
