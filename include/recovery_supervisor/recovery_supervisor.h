@@ -4,6 +4,7 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <move_base_msgs/RecoveryStatus.h>
@@ -45,8 +46,9 @@ private:
   bool demonstrating_;
   bool has_goal_;
   bool first_msg_;
-  bool first_odom_msg_;
+  bool first_amcl_msg_;
 
+  geometry_msgs::PoseStamped last_amcl_pose_;
   geometry_msgs::PoseStamped latest_pose_;
   geometry_msgs::PoseStamped last_recovery_pose_;
 
@@ -54,6 +56,7 @@ private:
   ros::Publisher failure_location_pub_;
   ros::Publisher status_pub_;
 
+  ros::Subscriber amcl_sub_;
   ros::Subscriber cmd_vel_sub_;
   ros::Subscriber demo_path_sub_;
   ros::Subscriber footprint_sub_;
@@ -73,6 +76,9 @@ private:
   tf::Pose start_stagnation_pose_;
 
   rosbag::Bag* bag_;
+
+  /** tracks localization so we know if it goes crazy */
+  void amclCallback(const geometry_msgs::PoseWithCovarianceStamped& msg);
 
   /** logs path coming from points_to_path */
   void demoPathCallback(const nav_msgs::Path& msg);

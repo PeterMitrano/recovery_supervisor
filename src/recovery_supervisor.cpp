@@ -14,7 +14,7 @@ RecoverySupervisor::RecoverySupervisor()
   , demonstrating_(false)
   , has_goal_(false)
   , first_msg_(true)
-  , first_odom_msg_(true)
+  , first_amcl_msg_(true)
 {
   // fetch parameters
   ros::NodeHandle private_nh("~");
@@ -27,11 +27,12 @@ RecoverySupervisor::RecoverySupervisor()
   private_nh.param<double>("minimum_displacement", minimum_displacement_, 2.0);
 
   // for checking localization errors
-  private_nh.param<double>("maximum_displacement_jump", maximum_displacement_jump_, 5.0);
+  private_nh.param<double>("maximum_displacement_jump", maximum_displacement_jump_, 2.0);
 
   std::string bag_file_directory_prefix;
   private_nh.param<std::string>("bag_file_directory_prefix", bag_file_directory_prefix, "my_bags");
 
+  amcl_sub_ = nh.subscribe("amcl_pose", 10, &RecoverySupervisor::amclCallback, this);
   cmd_vel_sub_ = nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
   demo_path_sub_ = nh.subscribe("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
   footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
@@ -110,6 +111,35 @@ RecoverySupervisor::RecoverySupervisor()
     ros::spinOnce();
     r.sleep();
   }
+}
+
+void RecoverySupervisor::amclCallback(const geometry_msgs::PoseWithCovarianceStamped& msg)
+{
+  ROS_INFO_ONCE("amcl received.");
+
+  if (first_amcl_msg_)
+  {
+    first_amcl_msg_ = false;
+  }
+  else
+  {
+    // check for localization jumps
+    geometry_msgs::PoseStamped curent_pose;
+    curent_pose.pose = msg.pose.pose;
+    curent_pose.header = msg.header;
+    double displacement = dist(curent_pose, last_amcl_pose_);
+    ROS_INFO("displacement %f", displacement);
+    if (displacement > maximum_displacement_jump_)
+    {
+      ROS_ERROR("Localization failure: jumped by %f meters", displacement);
+      actionlib_msgs::GoalID msg;
+      msg.stamp = ros::Time(0);
+      cancel_pub_.publish(msg);
+    }
+  }
+
+  last_amcl_pose_.pose = msg.pose.pose;
+  last_amcl_pose_.header = msg.header;
 }
 
 void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
@@ -237,26 +267,6 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
   bag_mutex_.lock();
   bag_->write("odom", ros::Time::now(), msg);
   bag_mutex_.unlock();
-
-  if (first_odom_msg_)
-  {
-    first_odom_msg_ = false;
-  }
-  else
-  {
-    // check for localization jumps
-    geometry_msgs::PoseStamped curent_pose;
-    curent_pose.pose = msg.pose.pose;
-    curent_pose.header = msg.header;
-    double displacement = dist(latest_pose_, curent_pose);
-    if (displacement > maximum_displacement_jump_)
-    {
-      ROS_ERROR("Localization failure: jumped by %f meters", displacement);
-      actionlib_msgs::GoalID msg;
-      msg.id = current_goal_id_;
-      cancel_pub_.publish(msg);
-    }
-  }
 
   latest_pose_.pose = msg.pose.pose;
   latest_pose_.header = msg.header;
