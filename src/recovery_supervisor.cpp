@@ -1,6 +1,7 @@
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
 #include <boost/filesystem.hpp>
+#include <sensor_msgs/PointField.h>
 
 #include "recovery_supervisor/recovery_supervisor.h"
 
@@ -48,10 +49,17 @@ RecoverySupervisor::RecoverySupervisor()
   tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
-  status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
   failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
+  recovery_cloud_pub_.advertise(private_nh, "recovery_cloud", false);
+  status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
 
   bag_ = new rosbag::Bag();
+
+  recovery_cloud_ = new pcl::PointCloud<RecoveryPoint>();
+  recovery_cloud_->header.frame_id = "map";
+  recovery_cloud_->points.clear();
+  recovery_cloud_->width = 0;
+  recovery_cloud_->height = 0;
 
   // we rant to group all bag files from this session into a folder
   // name the folder with time stamp
@@ -104,9 +112,13 @@ RecoverySupervisor::RecoverySupervisor()
       ROS_INFO("Demonstrations disabled.");
     }
 
+    // publish if demo is enabled or not
+    // and also recovery cloud (locations)
+    // constantly for others to use or visualize
     std_msgs::Bool status;
     status.data = demonstrating_;
     status_pub_.publish(status);
+    recovery_cloud_pub_.publish(*recovery_cloud_);
 
     ros::spinOnce();
     r.sleep();
@@ -285,6 +297,15 @@ void RecoverySupervisor::recoveryCallback(const move_base_msgs::RecoveryStatus& 
   first_recovery_count_++;
   ROS_INFO("new recovery (%s). recovery count: %d", msg.name.c_str(), first_recovery_count_);
 
+  // update my "point cloud" of recovery locations
+  RecoveryPoint pt;
+  recoveryStatsMsgToRecoveryPoint(msg, pt);
+  recovery_cloud_->push_back(pt);
+
+  bag_mutex_.lock();
+  bag_->write("/recovery_supervisor/recovery_locations", ros::Time::now(), msg);
+  bag_mutex_.unlock();
+
   // we allow for for the first straf recovery
   // if first straf fails to help, or we repeat first straf without
   // making significant progress
@@ -293,13 +314,24 @@ void RecoverySupervisor::recoveryCallback(const move_base_msgs::RecoveryStatus& 
     // here we want to enable demonstration in rviz
     starting_demonstration_ = true;
 
-    bag_mutex_.lock();
-    bag_->write("/recovery_supervisor/failure_locations", ros::Time::now(), latest_pose_);
-    bag_mutex_.unlock();
     failure_location_pub_.publish(latest_pose_);
   }
 
   last_recovery_pose_ = latest_pose_;
+}
+
+void RecoverySupervisor::recoveryStatsMsgToRecoveryPoint(move_base_msgs::RecoveryStatus msg, RecoveryPoint& pt)
+{
+  pt.x = msg.pose_stamped.pose.position.x;
+  pt.y = msg.pose_stamped.pose.position.y;
+  pt.z = msg.pose_stamped.pose.position.z;
+
+  pt.ox = msg.pose_stamped.pose.orientation.x;
+  pt.oy = msg.pose_stamped.pose.orientation.y;
+  pt.oz = msg.pose_stamped.pose.orientation.z;
+  pt.ow = msg.pose_stamped.pose.orientation.w;
+
+  pt.index = msg.index;
 }
 
 void RecoverySupervisor::teleopCallback(const geometry_msgs::Twist& msg)

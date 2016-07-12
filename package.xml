@@ -12,8 +12,12 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <build_depend>libpcl-all-dev</build_depend>
+  <exec_depend>libpcl-all</exec_depend>
+
   <depend>actionlib_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>pcl_ros</depend>
   <depend>move_base_msgs</depend>
   <depend>map_msgs</depend>
   <depend>nav_msgs</depend>

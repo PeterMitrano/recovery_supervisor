@@ -1,5 +1,7 @@
 #pragma once
 
+#include "recovery_supervisor/recovery_point.h"
+
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PolygonStamped.h>
@@ -11,9 +13,14 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <pcl_ros/publisher.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_datatypes.h>
 #include <tf2_msgs/TFMessage.h>
 #include <mutex>
@@ -21,6 +28,7 @@
 
 namespace recovery_supervisor
 {
+
 class RecoverySupervisor
 {
 public:
@@ -35,9 +43,9 @@ public:
 private:
   int bag_index_;
   int finish_demonstration_button_;
+  int first_recovery_count_;
   int force_demonstration_button_;
   int maximum_first_recovery_count_;
-  int first_recovery_count_;
   double maximum_displacement_jump_;
   double minimum_displacement_;
   double stagnation_check_period_;
@@ -51,6 +59,9 @@ private:
   geometry_msgs::PoseStamped last_amcl_pose_;
   geometry_msgs::PoseStamped latest_pose_;
   geometry_msgs::PoseStamped last_recovery_pose_;
+
+  pcl::PointCloud<RecoveryPoint>* recovery_cloud_;
+  pcl_ros::Publisher<RecoveryPoint> recovery_cloud_pub_;
 
   ros::Publisher cancel_pub_;
   ros::Publisher failure_location_pub_;
@@ -109,6 +120,8 @@ private:
 
   /** odom for publishing failure locations */
   void odometryCallback(const nav_msgs::Odometry& msg);
+
+  void recoveryStatsMsgToRecoveryPoint(move_base_msgs::RecoveryStatus msg, RecoveryPoint& pt);
 
   /**
    * Logs velocity commands sent to the robot whilst an demonstration is occuring

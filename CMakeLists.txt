@@ -5,6 +5,7 @@ set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
+find_package(PCL REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   geometry_msgs
@@ -37,6 +38,15 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
+)
+
+link_directories(
+  ${PCL_LIBRARY_DIRS}
+)
+
+add_definitions(
+  ${PCL_DEFINITIONS}
 )
 
 add_executable(points_to_path
