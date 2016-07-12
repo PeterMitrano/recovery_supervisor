@@ -128,7 +128,7 @@ void RecoverySupervisor::amclCallback(const geometry_msgs::PoseWithCovarianceSta
     curent_pose.pose = msg.pose.pose;
     curent_pose.header = msg.header;
     double displacement = dist(curent_pose, last_amcl_pose_);
-    ROS_INFO("displacement %f", displacement);
+    ROS_DEBUG("displacement %f", displacement);
     if (displacement > maximum_displacement_jump_)
     {
       ROS_ERROR("Localization failure: jumped by %f meters", displacement);
