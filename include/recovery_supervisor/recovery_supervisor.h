@@ -1,9 +1,9 @@
 #pragma once
 
 #include <actionlib_msgs/GoalStatusArray.h>
+#include <geometry_msgs/Point.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Point.h>
 #include <geometry_msgs/Twist.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <move_base_msgs/RecoveryStatus.h>
@@ -35,8 +35,8 @@ private:
   int bag_index_;
   int finish_demonstration_button_;
   int force_demonstration_button_;
-  int maximum_recovery_count_;
-  int recovery_count_;
+  int maximum_first_recovery_count_;
+  int first_recovery_count_;
   double minimum_displacement_;
   double stagnation_check_period_;
   bool starting_demonstration_;

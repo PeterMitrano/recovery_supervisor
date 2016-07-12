@@ -10,7 +10,8 @@ PointsToPath::PointsToPath() : demonstrating_(false), was_demonstrating_(false)
   ros::NodeHandle nh_private("~");
   ros::NodeHandle nh;
 
-  demo_status_sub_ = nh.subscribe("recovery_supervisor/demonstration_status", 10, &PointsToPath::demoStatusCallback, this);
+  demo_status_sub_ =
+      nh.subscribe("recovery_supervisor/demonstration_status", 10, &PointsToPath::demoStatusCallback, this);
   points_sub_ = nh.subscribe("clicked_point", 10, &PointsToPath::newPointCallback, this);
 
   path_pub_ = nh_private.advertise<nav_msgs::Path>("path", false);
@@ -35,7 +36,7 @@ void PointsToPath::demoStatusCallback(const std_msgs::Bool& msg)
 
   if (demonstrating_ && !was_demonstrating_)
   {
-    //clear and start new path
+    // clear and start new path
     ROS_INFO("starting new path.");
     path_mutex_.lock();
     current_path_.poses.clear();
@@ -66,7 +67,7 @@ void PointsToPath::newPointCallback(const geometry_msgs::PointStamped& msg)
 }
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
   ros::init(argc, argv, "points_to_path");
 

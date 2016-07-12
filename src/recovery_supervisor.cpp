@@ -1,20 +1,25 @@
-#include <boost/filesystem.hpp>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
+#include <boost/filesystem.hpp>
 
 #include "recovery_supervisor/recovery_supervisor.h"
 
 namespace recovery_supervisor
 {
 RecoverySupervisor::RecoverySupervisor()
-  : bag_index_(0), recovery_count_(0), starting_demonstration_(false), ending_demonstration_(false), demonstrating_(false), has_goal_(false)
+  : bag_index_(0)
+  , first_recovery_count_(0)
+  , starting_demonstration_(false)
+  , ending_demonstration_(false)
+  , demonstrating_(false)
+  , has_goal_(false)
 {
   // fetch parameters
   ros::NodeHandle private_nh("~");
   ros::NodeHandle nh;
   private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
   private_nh.param<int>("force_demonstration_button", force_demonstration_button_, 6);
-  private_nh.param<int>("maximum_recovery_count", maximum_recovery_count_, 8);
+  private_nh.param<int>("maximum_first_recovery_count_recovery_count", maximum_first_recovery_count_, 3);
 
   // controls how far the robot must move in stagnation_check_period (meters)
   private_nh.param<double>("minimum_displacement", minimum_displacement_, 2.0);
@@ -57,12 +62,11 @@ RecoverySupervisor::RecoverySupervisor()
     return;
   }
 
-  std::string bag_name = bag_file_directory_ + "/" +
-    std::to_string(bag_index_) + ".bag";
+  std::string bag_name = bag_file_directory_ + "/" + std::to_string(bag_index_) + ".bag";
 
   ROS_INFO("finish_demonstration_button %d", finish_demonstration_button_);
   ROS_INFO("minimum_displacement %f", minimum_displacement_);
-  ROS_INFO("maximum_recovery_count %d", maximum_recovery_count_);
+  ROS_INFO("maximum_first_recovery_count_recovery_count %d", maximum_first_recovery_count_);
   ROS_INFO("bag_file_directory %s", bag_name.c_str());
 
   bag_->open(bag_name, rosbag::bagmode::Write);
@@ -213,40 +217,35 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
     latest_pose_.header = msg.header;
   }
 
-  // check for big localizaion jumps
-}
-
-void RecoverySupervisor::recoveryCallback(const move_base_msgs::RecoveryStatus& msg)
-{
-  // Receiving a message indicates a demonstration is needed
-  // here we want to enable demonstration in rviz
-  starting_demonstration_ = true;
-
-  recovery_count_++;
-  ROS_INFO("new recovery (%s). recovery count: %d", msg.name.c_str(), recovery_count_);
-
-  failure_location_pub_.publish(latest_pose_);
-
   double displacement_since_last_recovery = dist(latest_pose_, last_recovery_pose_);
 
   // if we've moved far enough, we must be making progress so reset recovery count
   if (displacement_since_last_recovery > minimum_displacement_)
   {
-    recovery_count_ = 0;
+    first_recovery_count_ = 0;
+  }
+}
+
+void RecoverySupervisor::recoveryCallback(const move_base_msgs::RecoveryStatus& msg)
+{
+  first_recovery_count_++;
+  ROS_INFO("new recovery (%s). recovery count: %d", msg.name.c_str(), first_recovery_count_);
+
+  // we allow for for the first straf recovery
+  // if first straf fails to help, or we repeat first straf without
+  // making significant progress
+  if (first_recovery_count_ > maximum_first_recovery_count_ || msg.index > 0)
+  {
+    // here we want to enable demonstration in rviz
+    starting_demonstration_ = true;
+
+    bag_mutex_.lock();
+    bag_->write("/recovery_supervisor/failure_locations", ros::Time::now(), latest_pose_);
+    bag_mutex_.unlock();
+    failure_location_pub_.publish(latest_pose_);
   }
 
   last_recovery_pose_ = latest_pose_;
-
-  if (recovery_count_ > maximum_recovery_count_)
-  {
-    // we've recovered the max number of allowed times in the same area
-    // consider this failure and cancel goal.
-    actionlib_msgs::GoalID cancel_msg;
-    cancel_msg.stamp = ros::Time(0);
-    cancel_pub_.publish(cancel_msg);
-    ROS_WARN("too many recoverys. Cancelling nav_goal for safety.");
-    recovery_count_ = 0;
-  }
 }
 
 void RecoverySupervisor::teleopCallback(const geometry_msgs::Twist& msg)
@@ -284,7 +283,6 @@ double RecoverySupervisor::dist(geometry_msgs::PoseStamped p1, geometry_msgs::Po
 
   return (tf_p2 - tf_p1).length();
 }
-
 }
 
 int main(int argc, char** argv)
