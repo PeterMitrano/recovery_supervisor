@@ -80,9 +80,7 @@ install:
   - catkin_init_workspace
   # Create the devel/setup.bash (run catkin_make with an empty workspace) and
   # source it to set the path variables.
-  - cd ~/catkin_ws/src
-  - git clone -b publish_recovery_behavior https://github.com/PeterMitrano/navigation.git
-  - cd ..
+  - cd ~/catkin_ws
   - catkin_make
   - source devel/setup.bash
   # Add the package under integration to the workspace using a symlink.
@@ -94,6 +92,7 @@ install:
 before_script:
   # source dependencies: install using wstool.
   - cd ~/catkin_ws/src
+  - git clone -b publish_recovery_behavior https://github.com/PeterMitrano/navigation.git
   - wstool init
   - if [[ -f $ROSINSTALL_FILE ]] ; then wstool merge $ROSINSTALL_FILE ; fi
   - wstool up
