@@ -63,3 +63,4 @@ target_link_libraries(points_to_path
   ${catkin_LIBRARIES}
 )
 
+add_dependencies(recovery_supervisor ${catkin_EXPORTED_TARGETS})
