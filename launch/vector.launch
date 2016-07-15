@@ -6,10 +6,11 @@
     <node pkg="recovery_supervisor" type="recovery_supervisor"
           name="recovery_supervisor" output="screen">
 
-        <param name="stagnation_check_period" value="35" />
+        <param name="max_eta_error_factor" value="1.25" />
+        <param name="average_forward_velocity" value=".15" />
         <param name="bag_file_directory_prefix" type="str" value="$(find recovery_supervisor)/bags/$(arg filename)" />
 
-        <remap from="straf_recovery_cycles" to="/move_base/straf_recovery/cycles" />
+        <remap from="global_plan" to="/move_base/global_planner/GlobalPlannerROS/plan" />
         <remap from="move_base/status" to="move_base_navi/status" />
         <remap from="odom" to="vector/odometry/local_filtered" />
         <remap from="move_base/cancel" to="move_base_navi/cancel" />

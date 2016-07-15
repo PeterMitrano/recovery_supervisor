@@ -15,14 +15,6 @@ struct RecoveryPoint
 };
 }
 
-POINT_CLOUD_REGISTER_POINT_STRUCT(
-        recovery_supervisor::RecoveryPoint,
-        (float, x, x)
-        (float, y, y)
-        (float, z, z)
-        (float, ox, ox)
-        (float, oy, oy)
-        (float, oz, oz)
-        (float, ow, ow)
-        (int, index, index));
-
+POINT_CLOUD_REGISTER_POINT_STRUCT(recovery_supervisor::RecoveryPoint,
+                                  (float, x, x)(float, y, y)(float, z, z)(float, ox, ox)(float, oy, oy)(float, oz, oz)(
+                                      float, ow, ow)(int, index, index));

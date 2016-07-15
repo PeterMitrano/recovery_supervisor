@@ -1,7 +1,7 @@
+#include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
 #include <boost/filesystem.hpp>
-#include <sensor_msgs/PointField.h>
 
 #include "recovery_supervisor/recovery_supervisor.h"
 
@@ -14,6 +14,7 @@ RecoverySupervisor::RecoverySupervisor()
   , ending_demonstration_(false)
   , demonstrating_(false)
   , has_goal_(false)
+  , has_path_(false)
   , first_msg_(true)
   , first_amcl_msg_(true)
 {
@@ -23,8 +24,10 @@ RecoverySupervisor::RecoverySupervisor()
   private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
   private_nh.param<int>("force_demonstration_button", force_demonstration_button_, 6);
   private_nh.param<int>("maximum_first_recovery_count_recovery_count", maximum_first_recovery_count_, 3);
+  private_nh.param<double>("max_eta_error_factor", max_eta_error_factor_, 1.25);
+  private_nh.param<double>("average_forward_velocity", average_forward_velocity_, 0.15);
 
-  // controls how far the robot must move in stagnation_check_period (meters)
+  // controls how far the robot must move between recoveries
   private_nh.param<double>("minimum_displacement", minimum_displacement_, 2.0);
 
   // for checking localization errors
@@ -37,6 +40,7 @@ RecoverySupervisor::RecoverySupervisor()
   cmd_vel_sub_ = nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
   demo_path_sub_ = nh.subscribe("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
   footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
+  global_path_sub_ = nh.subscribe("global_plan", 10, &RecoverySupervisor::globalPlanCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
   local_costmap_sub_ =
       nh.subscribe("move_base/local_costmap/costmap", 100, &RecoverySupervisor::localCostmapCallback, this);
@@ -101,7 +105,6 @@ RecoverySupervisor::RecoverySupervisor()
       ending_demonstration_ = false;
       demonstrating_ = false;
 
-      stagnation_start_time_ = ros::Time::now();
       bag_mutex_.lock();
       bag_->close();
       bag_index_++;
@@ -172,6 +175,28 @@ void RecoverySupervisor::footprintCallback(const geometry_msgs::PolygonStamped& 
   }
 }
 
+void RecoverySupervisor::globalPlanCallback(const nav_msgs::Path& msg)
+{
+  if (!has_path_)
+  {
+    has_path_ = true;
+
+    // compute the length of the path
+    double path_length;
+    for (int i = 1; i < msg.poses.size(); i++)
+    {
+      geometry_msgs::PoseStamped previous_pose = msg.poses[i - 1];
+      geometry_msgs::PoseStamped pose = msg.poses[i];
+      path_length += dist(pose, previous_pose);
+    }
+
+    // compute ETA
+    // m / (m/s) = s
+    current_eta_ = ros::Duration(path_length / average_forward_velocity_, 0);
+    ROS_WARN("current eta: %fs", current_eta_.toSec());
+  }
+}
+
 void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
 {
   ROS_INFO_ONCE("joystick received.");
@@ -213,10 +238,13 @@ void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGri
 void RecoverySupervisor::newGoalCallback(const geometry_msgs::PoseStamped& msg)
 {
   has_goal_ = true;
+  has_path_ = false;
   ROS_DEBUG("new goal sent!");
   bag_mutex_.lock();
   bag_->write("move_base_simple/goal", ros::Time::now(), msg);
   bag_mutex_.unlock();
+
+  eta_start_time_ = ros::Time::now();
 }
 
 void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray& msg)
@@ -261,6 +289,14 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
       bag_mutex_.lock();
       bag_->write("goals_reached", ros::Time::now(), latest_pose_);
       bag_mutex_.unlock();
+
+      // now check if that took too long compared to our eta
+      auto actual_trip_time = ros::Time::now() - eta_start_time_;
+      if (actual_trip_time > (current_eta_ * max_eta_error_factor_))
+      {
+        ROS_WARN("ETA was %fs, actual time was %fs. Too slow!", current_eta_.toSec(), actual_trip_time.toSec());
+        starting_demonstration_ = true;
+      }
 
       current_goal_id_ = goal_id;
     }

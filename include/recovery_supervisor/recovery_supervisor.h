@@ -13,10 +13,10 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
-#include <pcl_ros/publisher.h>
-#include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/publisher.h>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
@@ -28,7 +28,12 @@
 
 namespace recovery_supervisor
 {
-
+/**
+ * @brief Recovery Supervisor is meant to work along side move_base
+ * and several other nodes in order to determine if a demonstration
+ * is needed. It also handles bagging data during demonstrations.
+ * It's a convoluted mess, and definitely has lots of concurrency errors.
+ */
 class RecoverySupervisor
 {
 public:
@@ -46,13 +51,16 @@ private:
   int first_recovery_count_;
   int force_demonstration_button_;
   int maximum_first_recovery_count_;
+  ros::Duration current_eta_;
+  double average_forward_velocity_;
   double maximum_displacement_jump_;
+  double max_eta_error_factor_;
   double minimum_displacement_;
-  double stagnation_check_period_;
   bool starting_demonstration_;
   bool ending_demonstration_;
   bool demonstrating_;
   bool has_goal_;
+  bool has_path_;
   bool first_msg_;
   bool first_amcl_msg_;
 
@@ -71,6 +79,7 @@ private:
   ros::Subscriber cmd_vel_sub_;
   ros::Subscriber demo_path_sub_;
   ros::Subscriber footprint_sub_;
+  ros::Subscriber global_path_sub_;
   ros::Subscriber joy_sub_;
   ros::Subscriber local_costmap_sub_;
   ros::Subscriber local_costmap_update_sub_;
@@ -80,11 +89,10 @@ private:
   ros::Subscriber recovery_status_sub_;
   ros::Subscriber tf_sub_;
 
-  ros::Time stagnation_start_time_;
+  ros::Time eta_start_time_;
   std::mutex bag_mutex_;
   std::string bag_file_directory_;
   std::string current_goal_id_;
-  tf::Pose start_stagnation_pose_;
 
   rosbag::Bag* bag_;
 
@@ -96,6 +104,9 @@ private:
 
   /** logs footprint of robot */
   void footprintCallback(const geometry_msgs::PolygonStamped& msg);
+
+  /** gets global path in order to compute and ETA for the plan */
+  void globalPlanCallback(const nav_msgs::Path& msg);
 
   /** signal end of teleop */
   void joyCallback(const sensor_msgs::Joy& msg);

@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   rosbag_storage
   roscpp
+  rviz
   sensor_msgs
   std_msgs
   tf
@@ -22,7 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES recovery_supervisor
+  LIBRARIES recovery_supervisor points_to_path
   CATKIN_DEPENDS actionlib_msgs
     geometry_msgs
     map_msgs
@@ -30,6 +31,7 @@ catkin_package(
     nav_msgs
     rosbag_storage
     roscpp
+    rviz
     sensor_msgs
     tf
     tf2_msgs

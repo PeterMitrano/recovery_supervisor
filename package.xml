@@ -23,6 +23,7 @@
   <depend>nav_msgs</depend>
   <depend>rosbag_storage</depend>
   <depend>roscpp</depend>
+  <depend>rviz</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>tf</depend>

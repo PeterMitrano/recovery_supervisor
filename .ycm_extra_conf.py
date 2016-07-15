@@ -45,6 +45,15 @@ flags = [
 # You 100% do NOT need -DUSE_CLANG_COMPLETER in your flags; only the YCM
 # source code needs it.
 '-DUSE_CLANG_COMPLETER',
+# QT ONLY
+'-DQT_CORE_LIB',
+'-DQT_GUI_LIB',
+'-DQT_NETWORK_LIB',
+'-DQT_QML_LIB',
+'-DQT_QUICK_LIB',
+'-DQT_SQL_LIB',
+'-DQT_WIDGETS_LIB',
+'-DQT_XML_LIB',
 # THIS IS IMPORTANT! Without a "-std=<something>" flag, clang won't know which
 # language to use when compiling headers. So it will guess. Badly. So C++
 # headers will be compiled as C headers. You don't want that so ALWAYS specify
