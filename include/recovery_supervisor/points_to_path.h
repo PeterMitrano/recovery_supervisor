@@ -18,6 +18,7 @@ private:
   bool was_demonstrating_;
   std::mutex path_mutex_;
 
+  ros::Publisher const_path_pub_;
   ros::Publisher path_pub_;
   ros::Subscriber demo_status_sub_;
   ros::Subscriber points_sub_;

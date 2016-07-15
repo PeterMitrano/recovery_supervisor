@@ -17,5 +17,8 @@
 
     </node>
 
+    <node pkg="recovery_supervisor" type="points_to_path" name="points_to_path"/>
+    <include file="$(find nav_points)/launch/stage.launch"/>
+
 </launch>
 

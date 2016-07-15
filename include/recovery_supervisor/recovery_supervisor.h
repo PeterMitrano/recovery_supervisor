@@ -68,10 +68,13 @@ private:
   geometry_msgs::PoseStamped latest_pose_;
   geometry_msgs::PoseStamped last_recovery_pose_;
 
+  nav_msgs::Path current_demo_path_;
+
   pcl::PointCloud<RecoveryPoint>* recovery_cloud_;
   pcl_ros::Publisher<RecoveryPoint> recovery_cloud_pub_;
 
   ros::Publisher cancel_pub_;
+  ros::Publisher complete_demo_path_pub_;
   ros::Publisher failure_location_pub_;
   ros::Publisher status_pub_;
 

@@ -53,6 +53,7 @@ RecoverySupervisor::RecoverySupervisor()
   tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
+  complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
   failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
   recovery_cloud_pub_.advertise(private_nh, "recovery_cloud", false);
   status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
@@ -112,6 +113,9 @@ RecoverySupervisor::RecoverySupervisor()
       bag_->open(bag_name, rosbag::bagmode::Write);
       bag_mutex_.unlock();
 
+      // publish the now completed demo path
+      complete_demo_path_pub_.publish(current_demo_path_);
+
       ROS_INFO("Demonstrations disabled.");
     }
 
@@ -161,6 +165,7 @@ void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
 {
   if (demonstrating_)
   {
+    current_demo_path_ = msg;
   }
 }
 

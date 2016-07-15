@@ -15,13 +15,14 @@ PointsToPath::PointsToPath() : demonstrating_(false), was_demonstrating_(false)
   points_sub_ = nh.subscribe("clicked_point", 10, &PointsToPath::newPointCallback, this);
 
   path_pub_ = nh_private.advertise<nav_msgs::Path>("path", false);
+  const_path_pub_ = nh_private.advertise<nav_msgs::Path>("const_path", false);
 
   ros::Rate r(10);
   while (ros::ok())
   {
     if (!current_path_.poses.empty() && !current_path_.header.frame_id.empty())
     {
-      path_pub_.publish(current_path_);
+      const_path_pub_.publish(current_path_);
     }
 
     ros::spinOnce();
@@ -63,6 +64,8 @@ void PointsToPath::newPointCallback(const geometry_msgs::PointStamped& msg)
     path_mutex_.lock();
     current_path_.poses.push_back(new_pose);
     path_mutex_.unlock();
+
+    path_pub_.publish(current_path_);
   }
 }
 }
