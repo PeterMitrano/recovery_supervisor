@@ -51,10 +51,10 @@ private:
   int first_recovery_count_;
   int force_demonstration_button_;
   int maximum_first_recovery_count_;
-  ros::Duration current_eta_;
+  ros::Duration estimate_trip_time_;
   double average_forward_velocity_;
   double maximum_displacement_jump_;
-  double max_eta_error_factor_;
+  double max_trip_time_error_factor_;
   double minimum_displacement_;
   bool starting_demonstration_;
   bool ending_demonstration_;
@@ -92,7 +92,7 @@ private:
   ros::Subscriber recovery_status_sub_;
   ros::Subscriber tf_sub_;
 
-  ros::Time eta_start_time_;
+  ros::Time trip_time_start_time_;
   std::mutex bag_mutex_;
   std::string bag_file_directory_;
   std::string current_goal_id_;

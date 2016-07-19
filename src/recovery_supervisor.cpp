@@ -24,7 +24,7 @@ RecoverySupervisor::RecoverySupervisor()
   private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
   private_nh.param<int>("force_demonstration_button", force_demonstration_button_, 6);
   private_nh.param<int>("maximum_first_recovery_count_recovery_count", maximum_first_recovery_count_, 3);
-  private_nh.param<double>("max_eta_error_factor", max_eta_error_factor_, 1.25);
+  private_nh.param<double>("max_trip_time_error_factor", max_trip_time_error_factor_, 1.25);
   private_nh.param<double>("average_forward_velocity", average_forward_velocity_, 0.15);
 
   // controls how far the robot must move between recoveries
@@ -197,8 +197,8 @@ void RecoverySupervisor::globalPlanCallback(const nav_msgs::Path& msg)
 
     // compute ETA
     // m / (m/s) = s
-    current_eta_ = ros::Duration(path_length / average_forward_velocity_, 0);
-    ROS_WARN("current eta: %fs", current_eta_.toSec());
+    estimate_trip_time_ = ros::Duration(path_length / average_forward_velocity_, 0);
+    ROS_WARN("current trip_time: %fs", estimate_trip_time_.toSec());
   }
 }
 
@@ -249,7 +249,7 @@ void RecoverySupervisor::newGoalCallback(const geometry_msgs::PoseStamped& msg)
   bag_->write("move_base_simple/goal", ros::Time::now(), msg);
   bag_mutex_.unlock();
 
-  eta_start_time_ = ros::Time::now();
+  trip_time_start_time_ = ros::Time::now();
 }
 
 void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatusArray& msg)
@@ -276,6 +276,7 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
 
   if (status == actionlib_msgs::GoalStatus::ABORTED)
   {
+    ROS_WARN("Goal was aborted.");
     if (has_goal_)
     {
       starting_demonstration_ = true;
@@ -295,11 +296,12 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
       bag_->write("goals_reached", ros::Time::now(), latest_pose_);
       bag_mutex_.unlock();
 
-      // now check if that took too long compared to our eta
-      auto actual_trip_time = ros::Time::now() - eta_start_time_;
-      if (actual_trip_time > (current_eta_ * max_eta_error_factor_))
+      // now check if that took too long compared to our trip_time
+      auto actual_trip_time = ros::Time::now() - trip_time_start_time_;
+      auto max_allowed_trip_time = estimate_trip_time_ * max_trip_time_error_factor_;
+      ROS_WARN("max allow time: %fs, actual time: %fs", max_allowed_trip_time.toSec(), actual_trip_time.toSec());
+      if (actual_trip_time > max_allowed_trip_time)
       {
-        ROS_WARN("ETA was %fs, actual time was %fs. Too slow!", current_eta_.toSec(), actual_trip_time.toSec());
         starting_demonstration_ = true;
       }
 
