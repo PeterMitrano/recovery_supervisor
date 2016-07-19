@@ -68,7 +68,7 @@ void PointsToPath::newPointCallback(const geometry_msgs::PointStamped& msg)
     path_pub_.publish(current_path_);
   }
 }
-}
+}  // namespace points_to_path
 
 int main(int argc, char** argv)
 {

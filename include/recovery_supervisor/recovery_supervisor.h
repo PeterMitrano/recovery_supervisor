@@ -1,5 +1,6 @@
 #pragma once
 
+#include "recovery_supervisor/Demo.h"
 #include "recovery_supervisor/recovery_point.h"
 
 #include <actionlib_msgs/GoalStatusArray.h>
@@ -69,11 +70,13 @@ private:
   geometry_msgs::PoseStamped last_recovery_pose_;
 
   nav_msgs::Path current_demo_path_;
+  nav_msgs::Path current_acml_path_;
 
   pcl::PointCloud<RecoveryPoint>* recovery_cloud_;
   pcl_ros::Publisher<RecoveryPoint> recovery_cloud_pub_;
 
   ros::Publisher cancel_pub_;
+  ros::Publisher demo_pub_;
   ros::Publisher complete_demo_path_pub_;
   ros::Publisher failure_location_pub_;
   ros::Publisher status_pub_;
@@ -88,6 +91,7 @@ private:
   ros::Subscriber status_sub_;
   ros::Subscriber recovery_status_sub_;
   ros::Subscriber tf_sub_;
+  ros::Subscriber velocity_sub_;
 
   ros::Time trip_time_start_time_;
   std::mutex bag_mutex_;
@@ -102,6 +106,9 @@ private:
 
   /** logs path coming from points_to_path */
   void demoPathCallback(const nav_msgs::Path& msg);
+
+  /** helper function for calculating euclidian distance */
+  double dist(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2);
 
   /** gets global path in order to compute and ETA for the plan */
   void globalPlanCallback(const nav_msgs::Path& msg);
@@ -125,7 +132,10 @@ private:
   /** odom for publishing failure locations */
   void odometryCallback(const nav_msgs::Odometry& msg);
 
-  void recoveryStatsMsgToRecoveryPoint(move_base_msgs::RecoveryStatus msg, RecoveryPoint& pt);
+  /** logs recovery instances. Counting these gives us failure information */
+  void recoveryCallback(const move_base_msgs::RecoveryStatus& msg);
+
+  void recoveryStatsMsgToRecoveryPoint(move_base_msgs::RecoveryStatus msg, RecoveryPoint* pt);
 
   /**
    * Logs velocity commands sent to the robot whilst an demonstration is occuring
@@ -137,10 +147,6 @@ private:
    */
   void tfCallback(const tf2_msgs::TFMessage& msg);
 
-  /** logs recovery instances. Counting these gives us failure information */
-  void recoveryCallback(const move_base_msgs::RecoveryStatus& msg);
-
-  /** helper function for calculating euclidian distance */
-  double dist(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2);
+  void velocityCallback(const geometry_msgs::Twist& msg);
 };
-}
+}  // namespace recovery_supervisor

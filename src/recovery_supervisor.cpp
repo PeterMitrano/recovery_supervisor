@@ -1,6 +1,7 @@
 #include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
+#include <string>
 #include <boost/filesystem.hpp>
 
 #include "recovery_supervisor/recovery_supervisor.h"
@@ -46,6 +47,7 @@ RecoverySupervisor::RecoverySupervisor()
   status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
   recovery_status_sub_ = nh.subscribe("move_base/recovery_status", 10, &RecoverySupervisor::recoveryCallback, this);
   tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
+  velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
 
   cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
   complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
@@ -102,6 +104,7 @@ RecoverySupervisor::RecoverySupervisor()
       demonstrating_ = false;
 
       bag_mutex_.lock();
+      bag_->write("complete_demo_path", ros::Time::now(), current_demo_path_);
       bag_->close();
       bag_index_++;
       std::string bag_name = bag_file_directory_ + "/" + std::to_string(bag_index_) + ".bag";
@@ -109,7 +112,14 @@ RecoverySupervisor::RecoverySupervisor()
       bag_mutex_.unlock();
 
       // publish the now completed demo path
+      // as well as the DemoPath message with all the info for learning
       complete_demo_path_pub_.publish(current_demo_path_);
+
+      Demo demo_msg;
+      demo_msg.header.stamp = ros::Time::now();
+      demo_msg.demo_path = current_demo_path_;
+      demo_msg.odom_path = current_acml_path_;
+      demo_pub_.publish(demo_msg);
 
       ROS_INFO("Demonstrations disabled.");
     }
@@ -130,6 +140,9 @@ RecoverySupervisor::RecoverySupervisor()
 void RecoverySupervisor::amclCallback(const geometry_msgs::PoseWithCovarianceStamped& msg)
 {
   ROS_INFO_ONCE("amcl received.");
+  bag_mutex_.lock();
+  bag_->write("amcl_pose", ros::Time::now(), msg);
+  bag_mutex_.unlock();
 
   if (first_amcl_msg_)
   {
@@ -154,6 +167,13 @@ void RecoverySupervisor::amclCallback(const geometry_msgs::PoseWithCovarianceSta
 
   last_amcl_pose_.pose = msg.pose.pose;
   last_amcl_pose_.header = msg.header;
+
+  if (!demonstrating_)
+  {
+    // assuming we haven't failed yet,
+    // record our position as nav_msgs/Path
+    current_acml_path_.poses.push_back(last_amcl_pose_);
+  }
 }
 
 void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
@@ -162,6 +182,17 @@ void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
   {
     current_demo_path_ = msg;
   }
+}
+
+double RecoverySupervisor::dist(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2)
+{
+  tf::Stamped<tf::Point> tf_p1;
+  tf::pointMsgToTF(p1.pose.position, tf_p1);
+
+  tf::Stamped<tf::Point> tf_p2;
+  tf::pointMsgToTF(p2.pose.position, tf_p2);
+
+  return (tf_p2 - tf_p1).length();
 }
 
 void RecoverySupervisor::globalPlanCallback(const nav_msgs::Path& msg)
@@ -304,7 +335,7 @@ void RecoverySupervisor::recoveryCallback(const move_base_msgs::RecoveryStatus& 
 
   // update my "point cloud" of recovery locations
   RecoveryPoint pt;
-  recoveryStatsMsgToRecoveryPoint(msg, pt);
+  recoveryStatsMsgToRecoveryPoint(msg, &pt);
   recovery_cloud_->push_back(pt);
 
   bag_mutex_.lock();
@@ -325,18 +356,18 @@ void RecoverySupervisor::recoveryCallback(const move_base_msgs::RecoveryStatus& 
   last_recovery_pose_ = latest_pose_;
 }
 
-void RecoverySupervisor::recoveryStatsMsgToRecoveryPoint(move_base_msgs::RecoveryStatus msg, RecoveryPoint& pt)
+void RecoverySupervisor::recoveryStatsMsgToRecoveryPoint(move_base_msgs::RecoveryStatus msg, RecoveryPoint* pt)
 {
-  pt.x = msg.pose_stamped.pose.position.x;
-  pt.y = msg.pose_stamped.pose.position.y;
-  pt.z = msg.pose_stamped.pose.position.z;
+  pt->x = msg.pose_stamped.pose.position.x;
+  pt->y = msg.pose_stamped.pose.position.y;
+  pt->z = msg.pose_stamped.pose.position.z;
 
-  pt.ox = msg.pose_stamped.pose.orientation.x;
-  pt.oy = msg.pose_stamped.pose.orientation.y;
-  pt.oz = msg.pose_stamped.pose.orientation.z;
-  pt.ow = msg.pose_stamped.pose.orientation.w;
+  pt->ox = msg.pose_stamped.pose.orientation.x;
+  pt->oy = msg.pose_stamped.pose.orientation.y;
+  pt->oz = msg.pose_stamped.pose.orientation.z;
+  pt->ow = msg.pose_stamped.pose.orientation.w;
 
-  pt.index = msg.index;
+  pt->index = msg.index;
 }
 
 void RecoverySupervisor::teleopCallback(const geometry_msgs::Twist& msg)
@@ -356,25 +387,20 @@ void RecoverySupervisor::teleopCallback(const geometry_msgs::Twist& msg)
 void RecoverySupervisor::tfCallback(const tf2_msgs::TFMessage& msg)
 {
   ROS_INFO_ONCE("tf received.");
-  if (demonstrating_)
-  {
-    bag_mutex_.lock();
-    bag_->write("tf", ros::Time::now(), msg);
-    bag_mutex_.unlock();
-  }
+  bag_mutex_.lock();
+  bag_->write("tf", ros::Time::now(), msg);
+  bag_mutex_.unlock();
 }
 
-double RecoverySupervisor::dist(geometry_msgs::PoseStamped p1, geometry_msgs::PoseStamped p2)
+void RecoverySupervisor::velocityCallback(const geometry_msgs::Twist& msg)
 {
-  tf::Stamped<tf::Point> tf_p1;
-  tf::pointMsgToTF(p1.pose.position, tf_p1);
-
-  tf::Stamped<tf::Point> tf_p2;
-  tf::pointMsgToTF(p2.pose.position, tf_p2);
-
-  return (tf_p2 - tf_p1).length();
+  ROS_INFO_ONCE("velocity received.");
+  bag_mutex_.lock();
+  bag_->write("velocity", ros::Time::now(), msg);
+  bag_mutex_.unlock();
 }
-}
+
+}  // namespace recovery_supervisor
 
 int main(int argc, char** argv)
 {

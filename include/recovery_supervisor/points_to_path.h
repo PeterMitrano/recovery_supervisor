@@ -31,4 +31,4 @@ private:
   void newPointCallback(const geometry_msgs::PointStamped& msg);
   void demoStatusCallback(const std_msgs::Bool& msg);
 };
-}
+}  // namespace points_to_path
