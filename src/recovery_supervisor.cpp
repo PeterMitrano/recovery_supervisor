@@ -39,13 +39,8 @@ RecoverySupervisor::RecoverySupervisor()
   amcl_sub_ = nh.subscribe("amcl_pose", 10, &RecoverySupervisor::amclCallback, this);
   cmd_vel_sub_ = nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
   demo_path_sub_ = nh.subscribe("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
-  footprint_sub_ = nh.subscribe("laser_footprint", 100, &RecoverySupervisor::footprintCallback, this);
   global_path_sub_ = nh.subscribe("global_plan", 10, &RecoverySupervisor::globalPlanCallback, this);
   joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
-  local_costmap_sub_ =
-      nh.subscribe("move_base/local_costmap/costmap", 100, &RecoverySupervisor::localCostmapCallback, this);
-  local_costmap_update_sub_ = nh.subscribe("move_base/local_costmap/costmap_updates", 100,
-                                           &RecoverySupervisor::localCostmapUpdateCallback, this);
   new_goal_sub_ = nh.subscribe("move_base_simple/goal", 1, &RecoverySupervisor::newGoalCallback, this);
   odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
   status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
@@ -169,17 +164,6 @@ void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
   }
 }
 
-void RecoverySupervisor::footprintCallback(const geometry_msgs::PolygonStamped& msg)
-{
-  ROS_INFO_ONCE("Footprint received.");
-  if (demonstrating_)
-  {
-    bag_mutex_.lock();
-    bag_->write("laser_footprint", ros::Time::now(), msg);
-    bag_mutex_.unlock();
-  }
-}
-
 void RecoverySupervisor::globalPlanCallback(const nav_msgs::Path& msg)
 {
   if (!has_path_)
@@ -215,28 +199,6 @@ void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
   else if (msg.buttons.at(force_demonstration_button_) == 1)
   {
     starting_demonstration_ = true;
-  }
-}
-
-void RecoverySupervisor::localCostmapCallback(const nav_msgs::OccupancyGrid& msg)
-{
-  ROS_INFO_ONCE("Local costmap received.");
-  if (demonstrating_)
-  {
-    bag_mutex_.lock();
-    bag_->write("move_base/local_costmap/costmap", ros::Time::now(), msg);
-    bag_mutex_.unlock();
-  }
-}
-
-void RecoverySupervisor::localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg)
-{
-  ROS_INFO_ONCE("Local costmap updates received.");
-  if (demonstrating_)
-  {
-    bag_mutex_.lock();
-    bag_->write("move_base/local_costmap/costmap_updates", ros::Time::now(), msg);
-    bag_mutex_.unlock();
   }
 }
 
@@ -302,7 +264,7 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
       ROS_WARN("max allow time: %fs, actual time: %fs", max_allowed_trip_time.toSec(), actual_trip_time.toSec());
       if (actual_trip_time > max_allowed_trip_time)
       {
-        starting_demonstration_ = true;
+        //starting_demonstration_ = true;
       }
 
       current_goal_id_ = goal_id;

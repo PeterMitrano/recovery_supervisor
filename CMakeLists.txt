@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   geometry_msgs
   map_msgs
+  message_generation
   move_base_msgs
   nav_msgs
   rosbag_storage
@@ -22,12 +23,18 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_msgs
 )
 
+
+add_message_files(FILES Feature.msg Demo.msg)
+
+generate_messages(DEPENDENCIES std_msgs geometry_msgs nav_msgs)
+
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES recovery_supervisor points_to_path
   CATKIN_DEPENDS actionlib_msgs
     geometry_msgs
     map_msgs
+    message_runtime
     move_base_msgs
     nav_msgs
     rosbag_storage

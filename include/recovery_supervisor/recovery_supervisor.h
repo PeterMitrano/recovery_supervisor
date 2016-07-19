@@ -4,7 +4,6 @@
 
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <geometry_msgs/Point.h>
-#include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/Twist.h>
@@ -82,11 +81,8 @@ private:
   ros::Subscriber amcl_sub_;
   ros::Subscriber cmd_vel_sub_;
   ros::Subscriber demo_path_sub_;
-  ros::Subscriber footprint_sub_;
   ros::Subscriber global_path_sub_;
   ros::Subscriber joy_sub_;
-  ros::Subscriber local_costmap_sub_;
-  ros::Subscriber local_costmap_update_sub_;
   ros::Subscriber new_goal_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber status_sub_;
@@ -100,25 +96,18 @@ private:
 
   rosbag::Bag* bag_;
 
-  /** tracks localization so we know if it goes crazy */
+  /** computes position changes and
+   * tracks localization so we know if it goes crazy */
   void amclCallback(const geometry_msgs::PoseWithCovarianceStamped& msg);
 
   /** logs path coming from points_to_path */
   void demoPathCallback(const nav_msgs::Path& msg);
-
-  /** logs footprint of robot */
-  void footprintCallback(const geometry_msgs::PolygonStamped& msg);
 
   /** gets global path in order to compute and ETA for the plan */
   void globalPlanCallback(const nav_msgs::Path& msg);
 
   /** signal end of teleop */
   void joyCallback(const sensor_msgs::Joy& msg);
-  /** logs costmaps sent during demonstration */
-  void localCostmapCallback(const nav_msgs::OccupancyGrid& msg);
-
-  /** logs costmaps sent during demonstration */
-  void localCostmapUpdateCallback(const map_msgs::OccupancyGridUpdate& msg);
 
   /** signal start of new goal (either clicked or sent as msg) */
   void newGoalCallback(const geometry_msgs::PoseStamped& msg);
