@@ -20,10 +20,10 @@
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <string>
 #include <tf/transform_datatypes.h>
 #include <tf2_msgs/TFMessage.h>
 #include <mutex>
+#include <string>
 #include <vector>
 
 namespace recovery_supervisor

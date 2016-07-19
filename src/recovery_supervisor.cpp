@@ -264,7 +264,7 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
       ROS_WARN("max allow time: %fs, actual time: %fs", max_allowed_trip_time.toSec(), actual_trip_time.toSec());
       if (actual_trip_time > max_allowed_trip_time)
       {
-        //starting_demonstration_ = true;
+        // starting_demonstration_ = true;
       }
 
       current_goal_id_ = goal_id;
