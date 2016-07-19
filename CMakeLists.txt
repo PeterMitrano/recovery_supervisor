@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   rosbag_storage
   roscpp
+  roslint
   rviz
   sensor_msgs
   std_msgs
@@ -66,3 +67,5 @@ target_link_libraries(points_to_path
 )
 
 add_dependencies(recovery_supervisor ${catkin_EXPORTED_TARGETS})
+
+roslint_cpp()

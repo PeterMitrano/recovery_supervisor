@@ -5,6 +5,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <mutex>
+#include <vector>
 
 namespace points_to_path
 {

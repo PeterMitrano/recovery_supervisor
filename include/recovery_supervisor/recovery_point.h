@@ -1,3 +1,5 @@
+#pragma once
+
 #include <pcl/register_point_struct.h>
 
 namespace recovery_supervisor

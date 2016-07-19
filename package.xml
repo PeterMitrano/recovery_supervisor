@@ -13,6 +13,8 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>libpcl-all-dev</build_depend>
+  <build_depend>roslint</build_depend>
+
   <exec_depend>libpcl-all</exec_depend>
 
   <depend>actionlib_msgs</depend>
