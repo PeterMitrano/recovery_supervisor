@@ -65,9 +65,12 @@ private:
   bool first_msg_;
   bool first_amcl_msg_;
 
+  Demo current_demo_;
+
   geometry_msgs::PoseStamped last_amcl_pose_;
   geometry_msgs::PoseStamped latest_pose_;
   geometry_msgs::PoseStamped last_recovery_pose_;
+  geometry_msgs::Twist last_velocity_;
 
   nav_msgs::Path current_demo_path_;
   nav_msgs::Path current_acml_path_;

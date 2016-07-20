@@ -1,10 +1,11 @@
+#include "recovery_supervisor/recovery_supervisor.h"
+#include "recovery_supervisor/Feature.h"
+
 #include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
 #include <string>
 #include <boost/filesystem.hpp>
-
-#include "recovery_supervisor/recovery_supervisor.h"
 
 namespace recovery_supervisor
 {
@@ -19,64 +20,66 @@ RecoverySupervisor::RecoverySupervisor()
   , first_msg_(true)
   , first_amcl_msg_(true)
 {
-  // fetch parameters
-  ros::NodeHandle private_nh("~");
-  ros::NodeHandle nh;
-  private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
-  private_nh.param<int>("force_demonstration_button", force_demonstration_button_, 6);
-  private_nh.param<int>("maximum_first_recovery_count_recovery_count", maximum_first_recovery_count_, 3);
-  private_nh.param<double>("max_trip_time_error_factor", max_trip_time_error_factor_, 1.25);
-  private_nh.param<double>("average_forward_velocity", average_forward_velocity_, 0.15);
-
-  // controls how far the robot must move between recoveries
-  private_nh.param<double>("minimum_displacement", minimum_displacement_, 2.0);
-
-  // for checking localization errors
-  private_nh.param<double>("maximum_displacement_jump", maximum_displacement_jump_, 2.0);
-
-  std::string bag_file_directory_prefix;
-  private_nh.param<std::string>("bag_file_directory_prefix", bag_file_directory_prefix, "my_bags");
-
-  amcl_sub_ = nh.subscribe("amcl_pose", 10, &RecoverySupervisor::amclCallback, this);
-  cmd_vel_sub_ = nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
-  demo_path_sub_ = nh.subscribe("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
-  global_path_sub_ = nh.subscribe("global_plan", 10, &RecoverySupervisor::globalPlanCallback, this);
-  joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
-  new_goal_sub_ = nh.subscribe("move_base_simple/goal", 1, &RecoverySupervisor::newGoalCallback, this);
-  odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
-  status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
-  recovery_status_sub_ = nh.subscribe("move_base/recovery_status", 10, &RecoverySupervisor::recoveryCallback, this);
-  tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
-  velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
-
-  cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
-  complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
-  failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
-  recovery_cloud_pub_.advertise(private_nh, "recovery_cloud", false);
-  status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
-
-  bag_ = new rosbag::Bag();
-
-  recovery_cloud_ = new pcl::PointCloud<RecoveryPoint>();
-  recovery_cloud_->header.frame_id = "map";
-  recovery_cloud_->points.clear();
-  recovery_cloud_->width = 0;
-  recovery_cloud_->height = 0;
-
-  // we rant to group all bag files from this session into a folder
-  // name the folder with time stamp
-  time_t now = time(0);
-  char buf[40];
-  strftime(buf, sizeof(buf), "%d%m%Y-%H%M%S", localtime(&now));
-  bag_file_directory_ += bag_file_directory_prefix;
-  bag_file_directory_ += "-";
-  bag_file_directory_ += buf;
-
-  boost::filesystem::path boost_bag_dir(bag_file_directory_);
-  if (!boost::filesystem::create_directory(boost_bag_dir))
   {
-    ROS_ERROR("Failed to create directory %s", bag_file_directory_.c_str());
-    return;
+    // fetch parameters
+    ros::NodeHandle private_nh("~");
+    ros::NodeHandle nh;
+    private_nh.param<int>("finish_demonstration_button", finish_demonstration_button_, 7);
+    private_nh.param<int>("force_demonstration_button", force_demonstration_button_, 6);
+    private_nh.param<int>("maximum_first_recovery_count_recovery_count", maximum_first_recovery_count_, 3);
+    private_nh.param<double>("max_trip_time_error_factor", max_trip_time_error_factor_, 1.25);
+    private_nh.param<double>("average_forward_velocity", average_forward_velocity_, 0.15);
+
+    // controls how far the robot must move between recoveries
+    private_nh.param<double>("minimum_displacement", minimum_displacement_, 2.0);
+
+    // for checking localization errors
+    private_nh.param<double>("maximum_displacement_jump", maximum_displacement_jump_, 2.0);
+
+    std::string bag_file_directory_prefix;
+    private_nh.param<std::string>("bag_file_directory_prefix", bag_file_directory_prefix, "my_bags");
+
+    amcl_sub_ = nh.subscribe("amcl_pose", 10, &RecoverySupervisor::amclCallback, this);
+    cmd_vel_sub_ = nh.subscribe("cmd_vel", 10, &RecoverySupervisor::teleopCallback, this);
+    demo_path_sub_ = nh.subscribe("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
+    global_path_sub_ = nh.subscribe("global_plan", 10, &RecoverySupervisor::globalPlanCallback, this);
+    joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
+    new_goal_sub_ = nh.subscribe("move_base_simple/goal", 1, &RecoverySupervisor::newGoalCallback, this);
+    odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
+    status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
+    recovery_status_sub_ = nh.subscribe("move_base/recovery_status", 10, &RecoverySupervisor::recoveryCallback, this);
+    tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
+    velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
+
+    cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
+    complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
+    failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
+    recovery_cloud_pub_.advertise(private_nh, "recovery_cloud", false);
+    status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
+
+    bag_ = new rosbag::Bag();
+
+    recovery_cloud_ = new pcl::PointCloud<RecoveryPoint>();
+    recovery_cloud_->header.frame_id = "map";
+    recovery_cloud_->points.clear();
+    recovery_cloud_->width = 0;
+    recovery_cloud_->height = 0;
+
+    // we rant to group all bag files from this session into a folder
+    // name the folder with time stamp
+    time_t now = time(0);
+    char buf[40];
+    strftime(buf, sizeof(buf), "%d%m%Y-%H%M%S", localtime(&now));
+    bag_file_directory_ += bag_file_directory_prefix;
+    bag_file_directory_ += "-";
+    bag_file_directory_ += buf;
+
+    boost::filesystem::path boost_bag_dir(bag_file_directory_);
+    if (!boost::filesystem::create_directory(boost_bag_dir))
+    {
+      ROS_ERROR("Failed to create directory %s", bag_file_directory_.c_str());
+      return;
+    }
   }
 
   std::string bag_name = bag_file_directory_ + "/" + std::to_string(bag_index_) + ".bag";
@@ -88,9 +91,22 @@ RecoverySupervisor::RecoverySupervisor()
 
   bag_->open(bag_name, rosbag::bagmode::Write);
 
-  ros::Rate r(10);
+  ros::Rate r(5);
   while (ros::ok())
   {
+    if (has_goal_ && !demonstrating_)
+    {
+      // we want to continuously capture feature vectors so they can later be
+      // used for training our weights. We do this at a fixed rate,
+      // which should small enough to capture most changes in the parameters
+      // but not unessecarily large. We use all the feature vectors from
+      // the start of our plan until failure is detected to train.
+      Feature feature_msg;
+      feature_msg.position = last_amcl_pose_.pose;
+      feature_msg.velocity = last_velocity_;
+      current_demo_.features.push_back(feature_msg);
+    }
+
     if (starting_demonstration_)
     {
       notifyDemonstrator();
@@ -115,11 +131,9 @@ RecoverySupervisor::RecoverySupervisor()
       // as well as the DemoPath message with all the info for learning
       complete_demo_path_pub_.publish(current_demo_path_);
 
-      Demo demo_msg;
-      demo_msg.header.stamp = ros::Time::now();
-      demo_msg.demo_path = current_demo_path_;
-      demo_msg.odom_path = current_acml_path_;
-      demo_pub_.publish(demo_msg);
+      current_demo_.header.stamp = ros::Time::now();
+      current_demo_.demo_path = current_demo_path_;
+      current_demo_.odom_path = current_acml_path_;
 
       ROS_INFO("Demonstrations disabled.");
     }
@@ -241,6 +255,10 @@ void RecoverySupervisor::newGoalCallback(const geometry_msgs::PoseStamped& msg)
   bag_mutex_.lock();
   bag_->write("move_base_simple/goal", ros::Time::now(), msg);
   bag_mutex_.unlock();
+
+  // reset current demo
+  current_demo_.header.stamp = ros::Time::now();
+  current_demo_.features.clear();
 
   trip_time_start_time_ = ros::Time::now();
 }
@@ -398,6 +416,7 @@ void RecoverySupervisor::velocityCallback(const geometry_msgs::Twist& msg)
   bag_mutex_.lock();
   bag_->write("velocity", ros::Time::now(), msg);
   bag_mutex_.unlock();
+  last_velocity_ = msg;
 }
 
 }  // namespace recovery_supervisor
