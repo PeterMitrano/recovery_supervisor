@@ -73,7 +73,9 @@ target_link_libraries(points_to_path
   ${catkin_LIBRARIES}
 )
 
-add_dependencies(recovery_supervisor ${catkin_EXPORTED_TARGETS})
+add_dependencies(recovery_supervisor
+  ${recovery_supervisor_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS})
 
 set(ROSLINT_CPP_OPTS "--filter=-legal/copyright,-build/header_guard")
 roslint_cpp()

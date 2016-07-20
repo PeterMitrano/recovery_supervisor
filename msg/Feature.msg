@@ -1,5 +1,5 @@
 Header header
-geometry_msgs/Pose position
-geometry_msgs/Twist velocity
-std_msgs/Time wall_time
-std_msgs/Int32 goalID
+geometry_msgs/Pose robot_position
+geometry_msgs/Twist robot_velocity
+time wall_time
+geometry_msgs/Pose goal_position

@@ -52,6 +52,7 @@ RecoverySupervisor::RecoverySupervisor()
     velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
 
     cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
+    demo_pub_ = private_nh.advertise<Demo>("demo", false);
     complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
     failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
     recovery_cloud_pub_.advertise(private_nh, "recovery_cloud", false);
@@ -102,8 +103,10 @@ RecoverySupervisor::RecoverySupervisor()
       // but not unessecarily large. We use all the feature vectors from
       // the start of our plan until failure is detected to train.
       Feature feature_msg;
-      feature_msg.position = last_amcl_pose_.pose;
-      feature_msg.velocity = last_velocity_;
+      feature_msg.robot_position = last_amcl_pose_.pose;
+      feature_msg.robot_velocity = last_velocity_;
+      feature_msg.wall_time = ros::Time::now();
+      feature_msg.goal_position = current_goal_pose_;
       current_demo_.features.push_back(feature_msg);
     }
 
@@ -134,6 +137,7 @@ RecoverySupervisor::RecoverySupervisor()
       current_demo_.header.stamp = ros::Time::now();
       current_demo_.demo_path = current_demo_path_;
       current_demo_.odom_path = current_acml_path_;
+      demo_pub_.publish(current_demo_);
 
       ROS_INFO("Demonstrations disabled.");
     }
@@ -256,9 +260,13 @@ void RecoverySupervisor::newGoalCallback(const geometry_msgs::PoseStamped& msg)
   bag_->write("move_base_simple/goal", ros::Time::now(), msg);
   bag_mutex_.unlock();
 
-  // reset current demo
+  current_goal_pose_ = msg.pose;
+
+  // reset current demo and related messages
   current_demo_.header.stamp = ros::Time::now();
   current_demo_.features.clear();
+  current_acml_path_.header.stamp = ros::Time::now();
+  current_acml_path_.header.frame_id = "map";
 
   trip_time_start_time_ = ros::Time::now();
 }

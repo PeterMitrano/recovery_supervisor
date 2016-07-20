@@ -5,6 +5,7 @@
 
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <geometry_msgs/Point.h>
+#include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/Twist.h>
@@ -67,6 +68,7 @@ private:
 
   Demo current_demo_;
 
+  geometry_msgs::Pose current_goal_pose_;
   geometry_msgs::PoseStamped last_amcl_pose_;
   geometry_msgs::PoseStamped latest_pose_;
   geometry_msgs::PoseStamped last_recovery_pose_;
