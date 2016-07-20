@@ -20,7 +20,8 @@ class DemoViz:
         self.demo_path_pub.publish(demo_msg.demo_path)
 
         for feature_vector in demo_msg.features:
-            print feature_vector.wall_time
+            pass
+            #print feature_vector.wall_time
 
 if __name__ == '__main__':
     dv = DemoViz()

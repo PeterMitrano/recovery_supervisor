@@ -102,7 +102,10 @@ RecoverySupervisor::RecoverySupervisor()
       // which should small enough to capture most changes in the parameters
       // but not unessecarily large. We use all the feature vectors from
       // the start of our plan until failure is detected to train.
+      // This also means if you force start a demonstration, it will also stop
+      // recording features at that point.
       Feature feature_msg;
+      feature_msg.header.stamp = ros::Time::now();
       feature_msg.robot_position = last_amcl_pose_.pose;
       feature_msg.robot_velocity = last_velocity_;
       feature_msg.wall_time = ros::Time::now();
@@ -231,7 +234,7 @@ void RecoverySupervisor::globalPlanCallback(const nav_msgs::Path& msg)
     // compute ETA
     // m / (m/s) = s
     estimate_trip_time_ = ros::Duration(path_length / average_forward_velocity_, 0);
-    ROS_WARN("current trip_time: %fs", estimate_trip_time_.toSec());
+    ROS_DEBUG("estimated trip_time: %fs", estimate_trip_time_.toSec());
   }
 }
 
@@ -318,9 +321,9 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
       // now check if that took too long compared to our trip_time
       auto actual_trip_time = ros::Time::now() - trip_time_start_time_;
       auto max_allowed_trip_time = estimate_trip_time_ * max_trip_time_error_factor_;
-      ROS_WARN("max allow time: %fs, actual time: %fs", max_allowed_trip_time.toSec(), actual_trip_time.toSec());
       if (actual_trip_time > max_allowed_trip_time)
       {
+        ROS_WARN("max allow time: %fs, actual time: %fs", max_allowed_trip_time.toSec(), actual_trip_time.toSec());
         // starting_demonstration_ = true;
       }
 
