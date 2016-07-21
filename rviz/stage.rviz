@@ -342,7 +342,7 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Alpha: 1
-      Buffer Length: 20
+      Buffer Length: 1
       Class: rviz/Path
       Color: 227; 151; 0
       Enabled: true
@@ -353,14 +353,29 @@ Visualization Manager:
         X: 0
         Y: 0
         Z: 0
-      Topic: /points_to_path/const_path
+      Topic: /points_to_path/path
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 225; 0; 225
+      Enabled: true
+      Line Style: Lines
+      Line Width: 0.03
+      Name: Cropped Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Topic: /points_to_path/cropped_path
       Unreliable: false
       Value: true
     - Angle Tolerance: 0.1
       Class: rviz/Odometry
       Color: 48; 48; 48
       Enabled: true
-      Keep: 200
+      Keep: 75
       Length: 0.2
       Name: Odometry
       Position Tolerance: 0.1
@@ -397,11 +412,11 @@ Visualization Manager:
         Value: false
       Name: Current View
       Near Clip Distance: 0.01
-      Scale: 46.3964
+      Scale: 64.4826
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 4.91931
-      Y: 5.08568
+      X: 3.13296
+      Y: 1.16611
     Saved: ~
 Window Geometry:
   Displays:

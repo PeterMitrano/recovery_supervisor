@@ -75,7 +75,7 @@ private:
   geometry_msgs::Twist last_velocity_;
 
   nav_msgs::Path current_demo_path_;
-  nav_msgs::Path current_acml_path_;
+  nav_msgs::Path current_amcl_path_;
 
   pcl::PointCloud<RecoveryPoint>* recovery_cloud_;
   pcl_ros::Publisher<RecoveryPoint> recovery_cloud_pub_;
@@ -83,6 +83,7 @@ private:
   ros::Publisher cancel_pub_;
   ros::Publisher demo_pub_;
   ros::Publisher complete_demo_path_pub_;
+  ros::Publisher cropped_path_pub_;
   ros::Publisher failure_location_pub_;
   ros::Publisher status_pub_;
 
@@ -108,6 +109,8 @@ private:
   /** computes position changes and
    * tracks localization so we know if it goes crazy */
   void amclCallback(const geometry_msgs::PoseWithCovarianceStamped& msg);
+
+  nav_msgs::Path crop_path(const nav_msgs::Path demo_path, const nav_msgs::Path amcl_path);
 
   /** logs path coming from points_to_path */
   void demoPathCallback(const nav_msgs::Path& msg);

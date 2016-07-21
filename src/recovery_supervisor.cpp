@@ -1,11 +1,12 @@
 #include "recovery_supervisor/recovery_supervisor.h"
 #include "recovery_supervisor/Feature.h"
 
+#include <boost/filesystem.hpp>
+#include <boost/range/adaptor/reversed.hpp>
 #include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
 #include <string>
-#include <boost/filesystem.hpp>
 
 namespace recovery_supervisor
 {
@@ -54,6 +55,7 @@ RecoverySupervisor::RecoverySupervisor()
     cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
     demo_pub_ = private_nh.advertise<Demo>("demo", false);
     complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
+    cropped_path_pub_ = private_nh.advertise<nav_msgs::Path>("cropped_path", false);
     failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
     recovery_cloud_pub_.advertise(private_nh, "recovery_cloud", false);
     status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
@@ -137,9 +139,10 @@ RecoverySupervisor::RecoverySupervisor()
       // as well as the DemoPath message with all the info for learning
       complete_demo_path_pub_.publish(current_demo_path_);
 
+      // for the Demo msg, we crop the amcl_path to match demo path.
       current_demo_.header.stamp = ros::Time::now();
       current_demo_.demo_path = current_demo_path_;
-      current_demo_.odom_path = current_acml_path_;
+      current_demo_.odom_path = crop_path(current_demo_path_, current_amcl_path_);
       demo_pub_.publish(current_demo_);
 
       ROS_INFO("Demonstrations disabled.");
@@ -193,8 +196,72 @@ void RecoverySupervisor::amclCallback(const geometry_msgs::PoseWithCovarianceSta
   {
     // assuming we haven't failed yet,
     // record our position as nav_msgs/Path
-    current_acml_path_.poses.push_back(last_amcl_pose_);
+    current_amcl_path_.poses.push_back(last_amcl_pose_);
   }
+}
+
+nav_msgs::Path RecoverySupervisor::crop_path(const nav_msgs::Path demo_path, const nav_msgs::Path amcl_path)
+{
+  nav_msgs::Path new_path;
+  new_path.header = amcl_path.header;
+
+  if (demo_path.poses.empty() || amcl_path.poses.empty())
+  {
+    return new_path;
+  }
+
+  // we find the point in the amcl_path closest to the starting point of the demo_path,
+  // and only add points from the amcl_path after that.
+  int start_index = 0;
+  double min_dist = std::numeric_limits<double>::max();
+  int i = 0;
+  for (auto point : amcl_path.poses)
+  {
+    double d = dist(point, demo_path.poses.front());
+    if (d < min_dist)
+    {
+      min_dist = d;
+      start_index = i;
+      ROS_INFO("(%f,%f) -> %f",
+          point.pose.position.x,
+          point.pose.position.y,
+          d);
+    }
+    i++;
+  }
+
+  // now we find the point in the amcl_path closest to the end of the demo_path,
+  // and only add points from the amcl_path before that.
+  int end_index = 0;
+  min_dist = std::numeric_limits<double>::max();
+  i = amcl_path.poses.size() - 1;
+  for (auto point : boost::adaptors::reverse(amcl_path.poses)) // this is badass
+  {
+    double d = dist(point, demo_path.poses.back());
+    if (d < min_dist)
+    {
+      min_dist = d;
+      end_index = i;
+    }
+    i--;
+  }
+
+  ROS_DEBUG("Cropping from %i (%f,%f) to %i (%f,%f)",
+      start_index,
+      amcl_path.poses[start_index].pose.position.x,
+      amcl_path.poses[start_index].pose.position.y,
+      end_index,
+      amcl_path.poses[end_index].pose.position.x,
+      amcl_path.poses[end_index].pose.position.y);
+
+  // finally, add the poses to our new path an return
+  for (int i = start_index; i <= end_index; i++)
+  {
+    new_path.poses.push_back(amcl_path.poses[i]);
+  }
+
+  cropped_path_pub_.publish(new_path);
+  return new_path;
 }
 
 void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
@@ -268,8 +335,8 @@ void RecoverySupervisor::newGoalCallback(const geometry_msgs::PoseStamped& msg)
   // reset current demo and related messages
   current_demo_.header.stamp = ros::Time::now();
   current_demo_.features.clear();
-  current_acml_path_.header.stamp = ros::Time::now();
-  current_acml_path_.header.frame_id = "map";
+  current_amcl_path_.header.stamp = ros::Time::now();
+  current_amcl_path_.header.frame_id = "map";
 
   trip_time_start_time_ = ros::Time::now();
 }
