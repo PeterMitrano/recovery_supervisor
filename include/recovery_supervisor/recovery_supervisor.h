@@ -110,6 +110,8 @@ private:
    * tracks localization so we know if it goes crazy */
   void amclCallback(const geometry_msgs::PoseWithCovarianceStamped& msg);
 
+  int indexOfClosestPose(geometry_msgs::PoseStamped, const nav_msgs::Path path);
+
   nav_msgs::Path crop_path(const nav_msgs::Path demo_path, const nav_msgs::Path amcl_path);
 
   /** logs path coming from points_to_path */

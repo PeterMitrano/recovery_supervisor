@@ -212,39 +212,11 @@ nav_msgs::Path RecoverySupervisor::crop_path(const nav_msgs::Path demo_path, con
 
   // we find the point in the amcl_path closest to the starting point of the demo_path,
   // and only add points from the amcl_path after that.
-  int start_index = 0;
-  double min_dist = std::numeric_limits<double>::max();
-  int i = 0;
-  for (auto point : amcl_path.poses)
-  {
-    double d = dist(point, demo_path.poses.front());
-    if (d < min_dist)
-    {
-      min_dist = d;
-      start_index = i;
-      ROS_INFO("(%f,%f) -> %f",
-          point.pose.position.x,
-          point.pose.position.y,
-          d);
-    }
-    i++;
-  }
+  int start_index = indexOfClosestPose(demo_path.poses.front(), amcl_path);
 
   // now we find the point in the amcl_path closest to the end of the demo_path,
   // and only add points from the amcl_path before that.
-  int end_index = 0;
-  min_dist = std::numeric_limits<double>::max();
-  i = amcl_path.poses.size() - 1;
-  for (auto point : boost::adaptors::reverse(amcl_path.poses)) // this is badass
-  {
-    double d = dist(point, demo_path.poses.back());
-    if (d < min_dist)
-    {
-      min_dist = d;
-      end_index = i;
-    }
-    i--;
-  }
+  int end_index = indexOfClosestPose(demo_path.poses.back(), amcl_path);
 
   ROS_DEBUG("Cropping from %i (%f,%f) to %i (%f,%f)",
       start_index,
@@ -262,6 +234,25 @@ nav_msgs::Path RecoverySupervisor::crop_path(const nav_msgs::Path demo_path, con
 
   cropped_path_pub_.publish(new_path);
   return new_path;
+}
+
+int RecoverySupervisor::indexOfClosestPose(geometry_msgs::PoseStamped other_pose, const nav_msgs::Path path)
+{
+  int index = 0;
+  double min_dist = std::numeric_limits<double>::max();
+  for (int i = 0; i < path.poses.size(); i++)
+  {
+    auto pose = path.poses[i];
+    double d = dist(pose, other_pose);
+    if (d < min_dist)
+    {
+      min_dist = d;
+      index = i;
+    }
+    i++;
+  }
+
+  return index;
 }
 
 void RecoverySupervisor::demoPathCallback(const nav_msgs::Path& msg)
