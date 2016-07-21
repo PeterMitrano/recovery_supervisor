@@ -1,6 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-  <arg name='map_name' default='maze'/>
-  <node name="demo_map_server" pkg="map_server" type="map_server" args="$(find turtlebot_stage)/maps/$(arg map_name).yaml" output="screen"/>
-  <node name="demo_rviz" pkg="rviz" type="rviz" args="-d $(find recovery_supervisor)/rviz/demo.rviz" output="screen"/>
-</launch>

@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>recovery_supervisor</name>
+  <version>0.0.0</version>
+  <description>A package for supervising navigation</description>
+
+  <maintainer email="mitranopeter@gmail.com">Peter Mitrano</maintainer>
+
+  <license>WTFPL</license>
+
+  <author >Peter Mitrano</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>libpcl-all-dev</build_depend>
+  <build_depend>roslint</build_depend>
+  <build_depend>message_generation</build_depend>
+
+  <exec_depend>libpcl-all</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <depend>actionlib_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>pcl_ros</depend>
+  <depend>move_base_msgs</depend>
+  <depend>map_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>recovery_supervisor_msgs</depend>
+  <depend>rosbag_storage</depend>
+  <depend>roscpp</depend>
+  <depend>rviz</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf</depend>
+  <depend>tf2_msgs</depend>
+
+  <export>
+
+  </export>
+</package>

@@ -1,0 +1,29 @@
+#!/usr/bin/python
+
+import sys
+import rospy
+from sensor_msgs.msg import PointCloud2
+import rosbag
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        print "Usage: get_list_of_recoveries bag_file"
+
+    else:
+        bag = rosbag.Bag(sys.argv[1])
+
+        msgs = []
+        for topic, msg, t in bag.read_messages(topics=['/recovery_supervisor/recovery_cloud']):
+            msgs.append(msg)
+
+        # republish last message
+        rospy.init_node('pub_last_pc_message', anonymous = True)
+        pub = rospy.Publisher('/recovery_supervisor/recovery_cloud', PointCloud2, queue_size=10)
+        r = rospy.Rate(10)
+        while not rospy.is_shutdown():
+          r.sleep()
+          pub.publish(msgs[-1])
+
+        bag.close()
+

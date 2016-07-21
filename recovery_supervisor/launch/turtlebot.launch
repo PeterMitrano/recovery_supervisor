@@ -1,0 +1,25 @@
+<!-- launch file when using vector nav -->
+
+<launch>
+    <arg name="filename" default="turtlebot_bags"/>
+
+    <node pkg="recovery_supervisor" type="recovery_supervisor"
+          name="recovery_supervisor" output="screen">
+
+        <param name="max_eta_error_factor" value="1.5" />
+        <param name="average_forward_velocity" value=".25" />
+        <param name="bag_file_directory_prefix" type="str" value="$(find recovery_supervisor)/bags/$(arg filename)" />
+
+        <remap from="laser_footprint" to="move_base/global_costmap/footprint" />
+        <remap from="global_plan" to="/move_base/GlobalPlanner/plan" />
+        <remap from="cmd_vel" to="cmd_vel_mux/input/teleop" />
+        <remap from="demo_path" to="points_to_path/path" />
+        <remap from="velocity" to="/mobile_base/commands/velocity" />
+
+    </node>
+
+    <node pkg="recovery_supervisor" type="points_to_path" name="points_to_path"/>
+    <include file="$(find nav_points)/launch/stage.launch"/>
+
+</launch>
+

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>recovery_supervisor_msgs</name>
+  <version>0.0.0</version>
+  <description>A package for msgs for supervising navigation</description>
+
+  <maintainer email="mitranopeter@gmail.com">Peter Mitrano</maintainer>
+
+  <license>WTFPL</license>
+
+  <author>Peter Mitrano</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+
+  <exec_depend>message_runtime</exec_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>std_msgs</depend>
+
+</package>

@@ -1,0 +1,5 @@
+Header header
+geometry_msgs/Pose robot_position
+geometry_msgs/Twist robot_velocity
+time wall_time
+geometry_msgs/Pose goal_position
