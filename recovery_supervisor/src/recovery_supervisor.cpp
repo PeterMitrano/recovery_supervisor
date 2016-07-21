@@ -1,8 +1,8 @@
 #include "recovery_supervisor/recovery_supervisor.h"
-#include "recovery_supervisor/Feature.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/range/adaptor/reversed.hpp>
+#include <recovery_supervisor_msgs/Feature.h>
 #include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
@@ -53,7 +53,7 @@ RecoverySupervisor::RecoverySupervisor()
     velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
 
     cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
-    demo_pub_ = private_nh.advertise<Demo>("demo", false);
+    demo_pub_ = private_nh.advertise<recovery_supervisor_msgs::Demo>("demo", false);
     complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
     cropped_path_pub_ = private_nh.advertise<nav_msgs::Path>("cropped_path", false);
     failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
@@ -106,7 +106,7 @@ RecoverySupervisor::RecoverySupervisor()
       // the start of our plan until failure is detected to train.
       // This also means if you force start a demonstration, it will also stop
       // recording features at that point.
-      Feature feature_msg;
+      recovery_supervisor_msgs::Feature feature_msg;
       feature_msg.header.stamp = ros::Time::now();
       feature_msg.robot_position = last_amcl_pose_.pose;
       feature_msg.robot_velocity = last_velocity_;
