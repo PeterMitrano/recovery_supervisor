@@ -74,5 +74,5 @@
   </include>
 
   <!--  **************** Visualisation ****************  -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find recovery_supervisor)/rviz/stage.rviz"/>
+  <!--<node name="rviz" pkg="rviz" type="rviz" args="-d $(find recovery_supervisor)/rviz/stage.rviz"/>-->
 </launch>
