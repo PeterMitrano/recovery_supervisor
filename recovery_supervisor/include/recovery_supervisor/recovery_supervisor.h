@@ -123,6 +123,8 @@ private:
   /** gets global path in order to compute and ETA for the plan */
   void globalPlanCallback(const nav_msgs::Path& msg);
 
+  int hourOfDay();
+
   /** signal end of teleop */
   void joyCallback(const sensor_msgs::Joy& msg);
 

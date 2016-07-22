@@ -2,11 +2,14 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/range/adaptor/reversed.hpp>
-#include <recovery_supervisor_msgs/Feature.h>
+#include <chrono>
+#include <recovery_supervisor_msgs/SimpleFloatArray.h>
+#include <std_msgs/Float32MultiArray.h>
 #include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
 #include <string>
+#include <tf/transform_datatypes.h>
 
 namespace recovery_supervisor
 {
@@ -106,13 +109,24 @@ RecoverySupervisor::RecoverySupervisor()
       // the start of our plan until failure is detected to train.
       // This also means if you force start a demonstration, it will also stop
       // recording features at that point.
-      recovery_supervisor_msgs::Feature feature_msg;
-      feature_msg.header.stamp = ros::Time::now();
-      feature_msg.robot_position = last_amcl_pose_.pose;
-      feature_msg.robot_velocity = last_velocity_;
-      feature_msg.wall_time = ros::Time::now();
-      feature_msg.goal_position = current_goal_pose_;
-      current_demo_.features.push_back(feature_msg);
+      recovery_supervisor_msgs::SimpleFloatArray feature_value;
+
+      //time of day in seconds
+      feature_value.data.push_back(hourOfDay());
+      // robot x, y, theta position
+      feature_value.data.push_back(last_amcl_pose_.pose.position.x);
+      feature_value.data.push_back(last_amcl_pose_.pose.position.y);
+      feature_value.data.push_back(tf::getYaw(last_amcl_pose_.pose.orientation));
+      // robot x, y, theta velocity
+      feature_value.data.push_back(last_velocity_.linear.x);
+      feature_value.data.push_back(last_velocity_.linear.y);
+      feature_value.data.push_back(last_velocity_.angular.z);
+      // current goal x, y, theta, position
+      feature_value.data.push_back(current_goal_pose_.position.x);
+      feature_value.data.push_back(current_goal_pose_.position.y);
+      feature_value.data.push_back(tf::getYaw(current_goal_pose_.orientation));
+
+      current_demo_.feature_values.push_back(feature_value);
     }
 
     if (starting_demonstration_)
@@ -236,6 +250,14 @@ nav_msgs::Path RecoverySupervisor::crop_path(const nav_msgs::Path demo_path, con
   return new_path;
 }
 
+int RecoverySupervisor::hourOfDay()
+{
+  auto now = std::chrono::system_clock::now();
+  time_t tt = std::chrono::system_clock::to_time_t(now);
+  tm local_tm = *localtime(&tt);
+  return local_tm.tm_hour;
+}
+
 int RecoverySupervisor::indexOfClosestPose(geometry_msgs::PoseStamped other_pose, const nav_msgs::Path path)
 {
   int index = 0;
@@ -325,7 +347,7 @@ void RecoverySupervisor::newGoalCallback(const geometry_msgs::PoseStamped& msg)
 
   // reset current demo and related messages
   current_demo_.header.stamp = ros::Time::now();
-  current_demo_.features.clear();
+  current_demo_.feature_values.clear();
   current_amcl_path_.header.stamp = ros::Time::now();
   current_amcl_path_.header.frame_id = "map";
 

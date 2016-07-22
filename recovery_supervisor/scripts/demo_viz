@@ -1,8 +1,7 @@
 #!/usr/bin/python
 
 import rospy
-from recovery_supervisor.msg import Demo
-from recovery_supervisor.msg import Feature
+from recovery_supervisor_msgs.msg import Demo
 from nav_msgs.msg import Path
 
 class DemoViz:
@@ -19,7 +18,7 @@ class DemoViz:
         self.odom_path_pub.publish(demo_msg.odom_path)
         self.demo_path_pub.publish(demo_msg.demo_path)
 
-        for feature_vector in demo_msg.features:
+        for feature_vector in demo_msg.feature_values:
             pass
             #print feature_vector.wall_time
 

@@ -16,8 +16,6 @@
 
   <exec_depend>message_runtime</exec_depend>
 
-  <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
-  <depend>std_msgs</depend>
 
 </package>
