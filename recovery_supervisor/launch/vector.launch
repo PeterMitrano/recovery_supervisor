@@ -17,6 +17,7 @@
         <remap from="move_base/cancel" to="move_base_navi/cancel" />
         <remap from="cmd_vel" to="vector/teleop/cmd_vel" />
         <remap from="demo_path" to="points_to_path/path" />
+        <remap from="demo" to="recovery_supervisor/demo" />
 
     </node>
 

@@ -14,6 +14,7 @@
         <remap from="global_plan" to="/move_base/GlobalPlanner/plan" />
         <remap from="cmd_vel" to="cmd_vel_mux/input/teleop" />
         <remap from="demo_path" to="points_to_path/path" />
+        <remap from="demo" to="recovery_supervisor/demo" />
         <remap from="velocity" to="/mobile_base/commands/velocity" />
 
     </node>
