@@ -7,9 +7,14 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 
-add_message_files(FILES SimpleFloatArray.msg Demo.msg)
-
+add_message_files(FILES
+  PosVelTimeGoalDemo.msg
+  PosVelTimeGoalFeature.msg
+  XYThetaDemo.msg
+  XYThetaFeature.msg
+  XYThetaGoalDemo.msg
+  XYThetaGoalFeature.msg
+)
 generate_messages(DEPENDENCIES nav_msgs)
 
-catkin_package(
-)
+catkin_package()

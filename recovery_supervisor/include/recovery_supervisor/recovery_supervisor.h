@@ -17,7 +17,7 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/publisher.h>
-#include <recovery_supervisor_msgs/Demo.h>
+#include <recovery_supervisor_msgs/PosVelTimeGoalDemo.h>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
@@ -66,7 +66,7 @@ private:
   bool first_msg_;
   bool first_amcl_msg_;
 
-  recovery_supervisor_msgs::Demo current_demo_;
+  recovery_supervisor_msgs::PosVelTimeGoalDemo current_demo_;
 
   geometry_msgs::Pose current_goal_pose_;
   geometry_msgs::PoseStamped last_amcl_pose_;

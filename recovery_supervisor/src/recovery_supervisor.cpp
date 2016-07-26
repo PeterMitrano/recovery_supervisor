@@ -3,8 +3,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 #include <chrono>
-#include <recovery_supervisor_msgs/SimpleFloatArray.h>
-#include <std_msgs/Float32MultiArray.h>
+#include <recovery_supervisor_msgs/PosVelTimeGoalFeature.h>
 #include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
@@ -56,7 +55,7 @@ RecoverySupervisor::RecoverySupervisor()
     velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
 
     cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
-    demo_pub_ = private_nh.advertise<recovery_supervisor_msgs::Demo>("demo", false);
+    demo_pub_ = private_nh.advertise<recovery_supervisor_msgs::PosVelTimeGoalDemo>("demo", false);
     complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
     cropped_path_pub_ = private_nh.advertise<nav_msgs::Path>("cropped_path", false);
     failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
@@ -109,22 +108,22 @@ RecoverySupervisor::RecoverySupervisor()
       // the start of our plan until failure is detected to train.
       // This also means if you force start a demonstration, it will also stop
       // recording features at that point.
-      recovery_supervisor_msgs::SimpleFloatArray feature_value;
+      recovery_supervisor_msgs::PosVelTimeGoalFeature feature_value;
 
       //time of day in seconds
-      feature_value.data.push_back(hourOfDay());
+      feature_value.hour = hourOfDay();
       // robot x, y, theta position
-      feature_value.data.push_back(last_amcl_pose_.pose.position.x);
-      feature_value.data.push_back(last_amcl_pose_.pose.position.y);
-      feature_value.data.push_back(tf::getYaw(last_amcl_pose_.pose.orientation));
+      feature_value.x = last_amcl_pose_.pose.position.x;
+      feature_value.y = last_amcl_pose_.pose.position.y;
+      feature_value.theta = tf::getYaw(last_amcl_pose_.pose.orientation);
       // robot x, y, theta velocity
-      feature_value.data.push_back(last_velocity_.linear.x);
-      feature_value.data.push_back(last_velocity_.linear.y);
-      feature_value.data.push_back(last_velocity_.angular.z);
+      feature_value.vx = last_velocity_.linear.x;
+      feature_value.vy = last_velocity_.linear.y;
+      feature_value.vtheta = last_velocity_.angular.z;
       // current goal x, y, theta, position
-      feature_value.data.push_back(current_goal_pose_.position.x);
-      feature_value.data.push_back(current_goal_pose_.position.y);
-      feature_value.data.push_back(tf::getYaw(current_goal_pose_.orientation));
+      feature_value.goal_x = current_goal_pose_.position.x;
+      feature_value.goal_y = current_goal_pose_.position.y;
+      feature_value.goal_theta = tf::getYaw(current_goal_pose_.orientation);
 
       current_demo_.feature_values.push_back(feature_value);
     }
