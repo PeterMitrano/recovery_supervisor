@@ -90,6 +90,7 @@ RecoverySupervisor::RecoverySupervisor()
   std::string bag_name = bag_file_directory_ + "/" + std::to_string(bag_index_) + ".bag";
 
   ROS_INFO("finish_demonstration_button %d", finish_demonstration_button_);
+  ROS_INFO("force_demonstration_button %d", force_demonstration_button_);
   ROS_INFO("minimum_displacement %f", minimum_displacement_);
   ROS_INFO("maximum_first_recovery_count_recovery_count %d", maximum_first_recovery_count_);
   ROS_INFO("bag_file_directory %s", bag_name.c_str());
