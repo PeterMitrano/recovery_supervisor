@@ -3,7 +3,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 #include <chrono>
-#include <recovery_supervisor_msgs/PosVelTimeGoalFeature.h>
+#include <recovery_supervisor_msgs/PosTimeGoalFeature.h>
 #include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
@@ -14,6 +14,7 @@ namespace recovery_supervisor
 {
 RecoverySupervisor::RecoverySupervisor()
   : bag_index_(0)
+  , current_goal_id_(0)
   , first_recovery_count_(0)
   , starting_demonstration_(false)
   , ending_demonstration_(false)
@@ -47,20 +48,22 @@ RecoverySupervisor::RecoverySupervisor()
     demo_path_sub_ = nh.subscribe("demo_path", 10, &RecoverySupervisor::demoPathCallback, this);
     global_path_sub_ = nh.subscribe("global_plan", 10, &RecoverySupervisor::globalPlanCallback, this);
     joy_sub_ = nh.subscribe("joy", 1, &RecoverySupervisor::joyCallback, this);
-    new_goal_sub_ = nh.subscribe("move_base_simple/goal", 1, &RecoverySupervisor::newGoalCallback, this);
+    new_goal_sub_ = nh.subscribe("nav_points/goal_id", 1, &RecoverySupervisor::newGoalCallback, this);
     odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
     status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
     recovery_status_sub_ = nh.subscribe("move_base/recovery_status", 10, &RecoverySupervisor::recoveryCallback, this);
     tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
     velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
 
+    amcl_path_pub_ = private_nh.advertise<nav_msgs::Path>("amcl_path", false);
     cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
-    demo_pub_ = private_nh.advertise<recovery_supervisor_msgs::PosVelTimeGoalDemo>("demo", false);
+    demo_pub_ = private_nh.advertise<recovery_supervisor_msgs::PosTimeGoalDemo>("demo", false);
     complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
     cropped_path_pub_ = private_nh.advertise<nav_msgs::Path>("cropped_path", false);
     failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
     recovery_cloud_pub_.advertise(private_nh, "recovery_cloud", false);
     status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
+    state_feature_pub_ = private_nh.advertise<recovery_supervisor_msgs::PosTimeGoalFeature>("state_feature", false);
 
     bag_ = new rosbag::Bag();
 
@@ -100,7 +103,7 @@ RecoverySupervisor::RecoverySupervisor()
   ros::Rate r(5);
   while (ros::ok())
   {
-    if (has_goal_ && !demonstrating_)
+    if (!demonstrating_)
     {
       // we want to continuously capture feature vectors so they can later be
       // used for training our weights. We do this at a fixed rate,
@@ -109,24 +112,24 @@ RecoverySupervisor::RecoverySupervisor()
       // the start of our plan until failure is detected to train.
       // This also means if you force start a demonstration, it will also stop
       // recording features at that point.
-      recovery_supervisor_msgs::PosVelTimeGoalFeature feature_value;
+      recovery_supervisor_msgs::PosTimeGoalFeature feature_value;
 
-      //time of day in seconds
+      ////time of day in hours
       feature_value.hour = hourOfDay();
       // robot x, y, theta position
       feature_value.x = last_amcl_pose_.pose.position.x;
       feature_value.y = last_amcl_pose_.pose.position.y;
       feature_value.theta = tf::getYaw(last_amcl_pose_.pose.orientation);
-      // robot x, y, theta velocity
-      feature_value.vx = last_velocity_.linear.x;
-      feature_value.vy = last_velocity_.linear.y;
-      feature_value.vtheta = last_velocity_.angular.z;
-      // current goal x, y, theta, position
-      feature_value.goal_x = current_goal_pose_.position.x;
-      feature_value.goal_y = current_goal_pose_.position.y;
-      feature_value.goal_theta = tf::getYaw(current_goal_pose_.orientation);
+      // goal id
+      feature_value.goal = current_goal_id_;
 
-      current_demo_.feature_values.push_back(feature_value);
+      if (has_goal_)
+      {
+        current_demo_.feature_values.push_back(feature_value);
+      }
+
+      //also publish this as our current state
+      state_feature_pub_.publish(feature_value);
     }
 
     if (starting_demonstration_)
@@ -219,6 +222,8 @@ nav_msgs::Path RecoverySupervisor::crop_path(const nav_msgs::Path demo_path, con
   nav_msgs::Path new_path;
   new_path.header = amcl_path.header;
 
+  amcl_path_pub_.publish(amcl_path);
+
   if (demo_path.poses.empty() || amcl_path.poses.empty())
   {
     return new_path;
@@ -232,7 +237,7 @@ nav_msgs::Path RecoverySupervisor::crop_path(const nav_msgs::Path demo_path, con
   // and only add points from the amcl_path before that.
   int end_index = indexOfClosestPose(demo_path.poses.back(), amcl_path);
 
-  ROS_DEBUG("Cropping from %i (%f,%f) to %i (%f,%f)",
+  ROS_INFO("Cropping from %i (%f,%f) to %i (%f,%f)",
       start_index,
       amcl_path.poses[start_index].pose.position.x,
       amcl_path.poses[start_index].pose.position.y,
@@ -334,20 +339,21 @@ void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
   }
 }
 
-void RecoverySupervisor::newGoalCallback(const geometry_msgs::PoseStamped& msg)
+void RecoverySupervisor::newGoalCallback(const std_msgs::Int32& msg)
 {
   has_goal_ = true;
   has_path_ = false;
   ROS_DEBUG("new goal sent!");
   bag_mutex_.lock();
-  bag_->write("move_base_simple/goal", ros::Time::now(), msg);
+  bag_->write("nav_points/goal_id", ros::Time::now(), msg);
   bag_mutex_.unlock();
 
-  current_goal_pose_ = msg.pose;
+  current_goal_id_ = msg.data;
 
   // reset current demo and related messages
   current_demo_.header.stamp = ros::Time::now();
   current_demo_.feature_values.clear();
+  current_amcl_path_.poses.clear();
   current_amcl_path_.header.stamp = ros::Time::now();
   current_amcl_path_.header.frame_id = "map";
 
@@ -363,7 +369,7 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
     first_msg_ = false;
     if (msg.status_list.size() > 0)
     {
-      current_goal_id_ = msg.status_list[0].goal_id.id;
+      current_movebase_goal_ = msg.status_list[0].goal_id.id;
     }
   }
 
@@ -384,11 +390,11 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
       starting_demonstration_ = true;
     }
     has_goal_ = false;
-    current_goal_id_ = goal_id;
+    current_movebase_goal_ = goal_id;
   }
   else if (status == actionlib_msgs::GoalStatus::SUCCEEDED)
   {
-    if (current_goal_id_ != goal_id)
+    if (current_movebase_goal_ != goal_id)
     {
       has_goal_ = false;
 
@@ -407,7 +413,7 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
         // starting_demonstration_ = true;
       }
 
-      current_goal_id_ = goal_id;
+      current_movebase_goal_ = goal_id;
     }
   }
 }

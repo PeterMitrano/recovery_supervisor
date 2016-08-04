@@ -10,8 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(FILES
   GoalFeature.msg
   GoalDemo.msg
-  PosVelTimeGoalDemo.msg
-  PosVelTimeGoalFeature.msg
+  PosTimeGoalDemo.msg
+  PosTimeGoalFeature.msg
   XYThetaDemo.msg
   XYThetaFeature.msg
   XYThetaGoalDemo.msg

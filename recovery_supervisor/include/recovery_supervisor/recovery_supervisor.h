@@ -17,11 +17,12 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/publisher.h>
-#include <recovery_supervisor_msgs/PosVelTimeGoalDemo.h>
+#include <recovery_supervisor_msgs/PosTimeGoalDemo.h>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <std_msgs/Int32.h>
 #include <tf/transform_datatypes.h>
 #include <tf2_msgs/TFMessage.h>
 #include <mutex>
@@ -49,6 +50,7 @@ public:
 
 private:
   int bag_index_;
+  int current_goal_id_;
   int finish_demonstration_button_;
   int first_recovery_count_;
   int force_demonstration_button_;
@@ -66,9 +68,9 @@ private:
   bool first_msg_;
   bool first_amcl_msg_;
 
-  recovery_supervisor_msgs::PosVelTimeGoalDemo current_demo_;
+  //recovery_supervisor_msgs::PosVelTimeGoalDemo current_demo_;
+  recovery_supervisor_msgs::PosTimeGoalDemo current_demo_;
 
-  geometry_msgs::Pose current_goal_pose_;
   geometry_msgs::PoseStamped last_amcl_pose_;
   geometry_msgs::PoseStamped latest_pose_;
   geometry_msgs::PoseStamped last_recovery_pose_;
@@ -84,8 +86,10 @@ private:
   ros::Publisher demo_pub_;
   ros::Publisher complete_demo_path_pub_;
   ros::Publisher cropped_path_pub_;
+  ros::Publisher amcl_path_pub_;
   ros::Publisher failure_location_pub_;
   ros::Publisher status_pub_;
+  ros::Publisher state_feature_pub_;
 
   ros::Subscriber amcl_sub_;
   ros::Subscriber cmd_vel_sub_;
@@ -102,7 +106,7 @@ private:
   ros::Time trip_time_start_time_;
   std::mutex bag_mutex_;
   std::string bag_file_directory_;
-  std::string current_goal_id_;
+  std::string current_movebase_goal_;
 
   rosbag::Bag* bag_;
 
@@ -129,7 +133,7 @@ private:
   void joyCallback(const sensor_msgs::Joy& msg);
 
   /** signal start of new goal (either clicked or sent as msg) */
-  void newGoalCallback(const geometry_msgs::PoseStamped& msg);
+  void newGoalCallback(const std_msgs::Int32& msg);
 
   /**
    * logs the status of the move_base goal. If failure is detected,
