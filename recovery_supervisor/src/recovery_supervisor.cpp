@@ -100,10 +100,10 @@ RecoverySupervisor::RecoverySupervisor()
 
   bag_->open(bag_name, rosbag::bagmode::Write);
 
-  ros::Rate r(5);
+  ros::Rate r(20);
   while (ros::ok())
   {
-    if (!demonstrating_)
+    if (has_goal_ && !demonstrating_)
     {
       // we want to continuously capture feature vectors so they can later be
       // used for training our weights. We do this at a fixed rate,
