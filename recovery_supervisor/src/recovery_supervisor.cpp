@@ -146,10 +146,6 @@ RecoverySupervisor::RecoverySupervisor()
 
       bag_mutex_.lock();
       bag_->write("complete_demo_path", ros::Time::now(), current_demo_path_);
-      bag_->close();
-      bag_index_++;
-      std::string bag_name = bag_file_directory_ + "/" + std::to_string(bag_index_) + ".bag";
-      bag_->open(bag_name, rosbag::bagmode::Write);
       bag_mutex_.unlock();
 
       // publish the now completed demo path
@@ -341,9 +337,9 @@ void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
 
 void RecoverySupervisor::newGoalCallback(const std_msgs::Int32& msg)
 {
+  ROS_INFO_ONCE("nav goal recieved.");
   has_goal_ = true;
   has_path_ = false;
-  ROS_DEBUG("new goal sent!");
   bag_mutex_.lock();
   bag_->write("nav_points/goal_id", ros::Time::now(), msg);
   bag_mutex_.unlock();
@@ -373,20 +369,15 @@ void RecoverySupervisor::moveBaseStatusCallback(const actionlib_msgs::GoalStatus
     }
   }
 
-  if (demonstrating_ || msg.status_list.empty())
-  {
-    return;
-  }
-
   actionlib_msgs::GoalStatus oldest_msg = msg.status_list[0];
   int status = oldest_msg.status;
   std::string goal_id = oldest_msg.goal_id.id;
 
   if (status == actionlib_msgs::GoalStatus::ABORTED)
   {
-    ROS_WARN("Goal was aborted.");
     if (has_goal_)
     {
+      ROS_WARN("Goal was aborted.");
       starting_demonstration_ = true;
     }
     has_goal_ = false;

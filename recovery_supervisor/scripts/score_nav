@@ -1,0 +1,64 @@
+#!/usr/bin/python
+
+import sys
+import rosbag
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        print "Usage: get_list_of_recoveries bag_file [output_file]"
+
+    else:
+        bag = rosbag.Bag(sys.argv[1])
+
+        if len(sys.argv) == 3:
+            output_file = open(sys.argv[2], 'w')
+
+        goal_start = 0
+        last_goal_id = None
+        current_goal_id = None
+        trips = {}
+        for topic, msg, t in bag.read_messages():
+            if topic == 'nav_points/goal_id':
+                current_goal_id = msg.data
+                goal_start = t
+            elif topic == 'goals_reached':
+                trip_time = (t - goal_start).to_sec()
+                if last_goal_id:
+                    trip = (last_goal_id, current_goal_id)
+                    if trip in trips:
+                        if 'times' in trips[trip]:
+                            trips[trip]['times'].append(trip_time)
+                        else:
+                            trips[trip]['times'] = [trip_time]
+                    else:
+                        trips[trip] = {'times': [trip_time]}
+                if current_goal_id:
+                    last_goal_id = current_goal_id
+            elif topic == '/recovery_supervisor/recovery_locations':
+                x = msg.pose_stamped.pose.position.x
+                y = msg.pose_stamped.pose.position.x
+                recovery = (msg.index, x, y)
+                trip = (last_goal_id, current_goal_id)
+                if trip in trips:
+                    if 'recoveries' in trips[trip]:
+                        trips[trip]['recoveries'].append(recovery)
+                    else:
+                        trips[trip]['recoveries'] = [recovery]
+                else:
+                    trips[trip] = {'recoveries': [recovery]}
+
+        for trip in trips:
+            if 'recoveries' in trips[trip]:
+                r = len(trips[trip]['recoveries'])
+            else:
+                r = 0
+            if 'times' in trips[trip]:
+                l = len(trips[trip]['times'])
+                average_time = sum(t for t in trips[trip]['times'])/l
+                print "from %i to %i in %f sec with %i recoveries" % (trip[0], trip[1], average_time, r)
+            else:
+                print "from %i to %i with %i recoveries (final trip. goal not reached)" % (trip[0], trip[1], r)
+
+        bag.close()
+
