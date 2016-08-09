@@ -359,11 +359,14 @@ void RecoverySupervisor::newGoalCallback(const std_msgs::Int32& msg)
   current_goal_id_ = msg.data;
 
   // reset current demo and related messages
-  current_demo_.header.stamp = ros::Time::now();
-  current_demo_.feature_values.clear();
-  current_amcl_path_.poses.clear();
-  current_amcl_path_.header.stamp = ros::Time::now();
-  current_amcl_path_.header.frame_id = "map";
+  if (!demonstrating_)
+  {
+    current_demo_.header.stamp = ros::Time::now();
+    current_demo_.feature_values.clear();
+    current_amcl_path_.poses.clear();
+    current_amcl_path_.header.stamp = ros::Time::now();
+    current_amcl_path_.header.frame_id = "map";
+  }
 
   trip_time_start_time_ = ros::Time::now();
 }
