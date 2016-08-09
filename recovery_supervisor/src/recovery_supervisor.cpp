@@ -58,7 +58,7 @@ RecoverySupervisor::RecoverySupervisor()
 
     amcl_path_pub_ = private_nh.advertise<nav_msgs::Path>("amcl_path", false);
     cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
-    demo_pub_ = private_nh.advertise<recovery_supervisor_msgs::PosTimeGoalDemo>("demo", false);
+    demo_pub_ = private_nh.advertise<recovery_supervisor_msgs::GoalDemo>("demo", false);
     complete_demo_path_pub_ = private_nh.advertise<nav_msgs::Path>("complete_demo_path", false);
     cropped_path_pub_ = private_nh.advertise<nav_msgs::Path>("cropped_path", false);
     failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
@@ -145,9 +145,6 @@ RecoverySupervisor::RecoverySupervisor()
       ending_demonstration_ = false;
       demonstrating_ = false;
 
-      bag_mutex_.lock();
-      bag_->write("complete_demo_path", ros::Time::now(), current_demo_path_);
-      bag_mutex_.unlock();
 
       // publish the now completed demo path
       // as well as the DemoPath message with all the info for learning
@@ -158,6 +155,10 @@ RecoverySupervisor::RecoverySupervisor()
       current_demo_.demo_path = current_demo_path_;
       current_demo_.odom_path = crop_path(current_demo_path_, current_amcl_path_);
       demo_pub_.publish(current_demo_);
+
+      bag_mutex_.lock();
+      bag_->write("demo", ros::Time::now(), current_demo_);
+      bag_mutex_.unlock();
 
       ROS_INFO("Demonstrations disabled.");
     }

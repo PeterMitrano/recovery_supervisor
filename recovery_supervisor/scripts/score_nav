@@ -17,8 +17,11 @@ if __name__ == '__main__':
         goal_start = 0
         last_goal_id = None
         current_goal_id = None
+        total_demos = 0
         trips = {}
         for topic, msg, t in bag.read_messages():
+            if topic == 'demo':
+                total_demos += 1
             if topic == 'nav_points/goal_id':
                 current_goal_id = msg.data
                 goal_start = t
@@ -66,6 +69,7 @@ if __name__ == '__main__':
         print "total trips:", len(trips)
         print "total time (hours): %.2f" % (total_time/3600.0)
         print "total recoveries:", total_recoveries
+        print "total demos:", total_demos
 
         bag.close()
 
