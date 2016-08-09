@@ -49,14 +49,14 @@ if __name__ == '__main__':
                     trips[trip] = {'recoveries': [recovery]}
 
         total_time = 0
-        total_recovries = 0
+        total_recoveries = 0
         for trip in trips:
-            if 'recoveries' in trips[trip]:
-                r = len(trips[trip]['recoveries'])
-                total_recovries += r
-            else:
-                r = 0
             if 'times' in trips[trip]:
+                if 'recoveries' in trips[trip]:
+                    r = len(trips[trip]['recoveries'])
+                    total_recoveries += r
+                else:
+                    r = 0
                 l = len(trips[trip]['times'])
                 s = sum(t for t in trips[trip]['times'])
                 average_time = s/l
@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
         print "total trips:", len(trips)
         print "total time (hours): %.2f" % (total_time/3600.0)
-        print "total recoveries:", r
+        print "total recoveries:", total_recoveries
 
         bag.close()
 

@@ -4,6 +4,7 @@
 #include <boost/range/adaptor/reversed.hpp>
 #include <chrono>
 #include <recovery_supervisor_msgs/PosTimeGoalFeature.h>
+#include <recovery_supervisor_msgs/GoalFeature.h>
 #include <sensor_msgs/PointField.h>
 #include <std_msgs/Bool.h>
 #include <stdlib.h>
@@ -63,7 +64,7 @@ RecoverySupervisor::RecoverySupervisor()
     failure_location_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("failure_locations", false);
     recovery_cloud_pub_.advertise(private_nh, "recovery_cloud", false);
     status_pub_ = private_nh.advertise<std_msgs::Bool>("demonstration_status", false);
-    state_feature_pub_ = private_nh.advertise<recovery_supervisor_msgs::PosTimeGoalFeature>("state_feature", false);
+    state_feature_pub_ = private_nh.advertise<recovery_supervisor_msgs::GoalFeature>("state_feature", false);
 
     bag_ = new rosbag::Bag();
 
@@ -112,14 +113,14 @@ RecoverySupervisor::RecoverySupervisor()
       // the start of our plan until failure is detected to train.
       // This also means if you force start a demonstration, it will also stop
       // recording features at that point.
-      recovery_supervisor_msgs::PosTimeGoalFeature feature_value;
+      recovery_supervisor_msgs::GoalFeature feature_value;
 
       ////time of day in hours
-      feature_value.hour = hourOfDay();
+      //feature_value.hour = hourOfDay();
       // robot x, y, theta position
-      feature_value.x = last_amcl_pose_.pose.position.x;
-      feature_value.y = last_amcl_pose_.pose.position.y;
-      feature_value.theta = tf::getYaw(last_amcl_pose_.pose.orientation);
+      //feature_value.x = last_amcl_pose_.pose.position.x;
+      //feature_value.y = last_amcl_pose_.pose.position.y;
+      //feature_value.theta = tf::getYaw(last_amcl_pose_.pose.orientation);
       // goal id
       feature_value.goal = current_goal_id_;
 
@@ -332,6 +333,16 @@ void RecoverySupervisor::joyCallback(const sensor_msgs::Joy& msg)
   else if (msg.buttons.at(force_demonstration_button_) == 1)
   {
     starting_demonstration_ = true;
+  }
+  else if (msg.buttons[10] == 1)
+  {
+    ROS_INFO("creating new bag");
+    bag_mutex_.lock();
+    bag_->close();
+    bag_index_++;
+    std::string bag_name = bag_file_directory_ + "/" + std::to_string(bag_index_) + ".bag";
+    bag_->open(bag_name, rosbag::bagmode::Write);
+    bag_mutex_.unlock();
   }
 }
 
