@@ -24,7 +24,7 @@ if __name__ == '__main__':
                 goal_start = t
             elif topic == 'goals_reached':
                 trip_time = (t - goal_start).to_sec()
-                if last_goal_id:
+                if last_goal_id is not None:
                     trip = (last_goal_id, current_goal_id)
                     if trip in trips:
                         if 'times' in trips[trip]:
@@ -33,7 +33,7 @@ if __name__ == '__main__':
                             trips[trip]['times'] = [trip_time]
                     else:
                         trips[trip] = {'times': [trip_time]}
-                if current_goal_id:
+                if current_goal_id is not None:
                     last_goal_id = current_goal_id
             elif topic == '/recovery_supervisor/recovery_locations':
                 x = msg.pose_stamped.pose.position.x
@@ -48,17 +48,24 @@ if __name__ == '__main__':
                 else:
                     trips[trip] = {'recoveries': [recovery]}
 
+        total_time = 0
+        total_recovries = 0
         for trip in trips:
             if 'recoveries' in trips[trip]:
                 r = len(trips[trip]['recoveries'])
+                total_recovries += r
             else:
                 r = 0
             if 'times' in trips[trip]:
                 l = len(trips[trip]['times'])
-                average_time = sum(t for t in trips[trip]['times'])/l
-                print "from %i to %i in %f sec with %i recoveries" % (trip[0], trip[1], average_time, r)
-            else:
-                print "from %i to %i with %i recoveries (final trip. goal not reached)" % (trip[0], trip[1], r)
+                s = sum(t for t in trips[trip]['times'])
+                average_time = s/l
+                total_time += s
+                print "from {:2d} to {:2d} in {:5.2f} sec with {:2d} recoveries".format(trip[0], trip[1], average_time, r)
+
+        print "total trips:", len(trips)
+        print "total time (hours): %.2f" % (total_time/3600.0)
+        print "total recoveries:", r
 
         bag.close()
 

@@ -52,8 +52,8 @@ RecoverySupervisor::RecoverySupervisor()
     odom_sub_ = nh.subscribe("odom", 1, &RecoverySupervisor::odometryCallback, this);
     status_sub_ = nh.subscribe("move_base/status", 1, &RecoverySupervisor::moveBaseStatusCallback, this);
     recovery_status_sub_ = nh.subscribe("move_base/recovery_status", 10, &RecoverySupervisor::recoveryCallback, this);
-    tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
-    velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
+    //tf_sub_ = nh.subscribe("tf", 1, &RecoverySupervisor::tfCallback, this);
+    //velocity_sub_ = nh.subscribe("velocity", 10, &RecoverySupervisor::velocityCallback, this);
 
     amcl_path_pub_ = private_nh.advertise<nav_msgs::Path>("amcl_path", false);
     cancel_pub_ = nh.advertise<actionlib_msgs::GoalID>("/move_base/cancel", false);
@@ -177,9 +177,9 @@ RecoverySupervisor::RecoverySupervisor()
 void RecoverySupervisor::amclCallback(const geometry_msgs::PoseWithCovarianceStamped& msg)
 {
   ROS_INFO_ONCE("amcl received.");
-  bag_mutex_.lock();
-  bag_->write("amcl_pose", ros::Time::now(), msg);
-  bag_mutex_.unlock();
+  //bag_mutex_.lock();
+  //bag_->write("amcl_pose", ros::Time::now(), msg);
+  //bag_mutex_.unlock();
 
   if (first_amcl_msg_)
   {
@@ -418,9 +418,9 @@ void RecoverySupervisor::odometryCallback(const nav_msgs::Odometry& msg)
 {
   ROS_INFO_ONCE("odom received.");
 
-  bag_mutex_.lock();
-  bag_->write("odom", ros::Time::now(), msg);
-  bag_mutex_.unlock();
+  //bag_mutex_.lock();
+  //bag_->write("odom", ros::Time::now(), msg);
+  //bag_mutex_.unlock();
 
   latest_pose_.pose = msg.pose.pose;
   latest_pose_.header = msg.header;
